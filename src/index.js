@@ -666,6 +666,7 @@ app.get('/watch', (req, res) => {
       padding: 12px 20px; color: #fff; font-size: 14px; font-weight: 600;
       display: flex; align-items: center; gap: 10px;
       animation: fadeOut 1s ease 4s forwards;
+      pointer-events: none;
     }
     #topbar .dot {
       width: 10px; height: 10px; background: #f44;
@@ -676,7 +677,25 @@ app.get('/watch', (req, res) => {
       0%, 100% { opacity: 1; transform: scale(1); }
       50%       { opacity: 0.5; transform: scale(1.3); }
     }
-    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    #fs-btn {
+      position: fixed; top: 12px; right: 16px; z-index: 100;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(20, 20, 20, 0.85); color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 10px;
+      padding: 10px 18px; font-size: 14px; font-weight: 700;
+      cursor: pointer; backdrop-filter: blur(8px);
+      transition: all 0.25s ease, opacity 0.6s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      user-select: none; outline: none;
+    }
+    #fs-btn:hover, #fs-btn:focus {
+      background: #f44; border-color: #fff;
+      transform: scale(1.08); box-shadow: 0 0 20px rgba(255,68,68,0.8);
+    }
+    #fs-btn.fade-out { opacity: 0.15; }
+    #fs-btn.fade-out:hover, #fs-btn.fade-out:focus { opacity: 1; }
 
     #player {
       position: fixed; top: 0; left: 0;
@@ -729,6 +748,10 @@ app.get('/watch', (req, res) => {
     <span>${safeTitle}</span>
   </div>
 
+  <button id="fs-btn" tabindex="0" title="Toggle Fullscreen (or Press OK on Remote)">
+    <span>\u26F6 Fullscreen</span>
+  </button>
+
   <div id="p2p-status">P2P Active: 0 Peers</div>
 
   <iframe
@@ -742,6 +765,40 @@ app.get('/watch', (req, res) => {
   <video id="video-player" controls autoplay playsinline></video>
 
   <script>
+    const fsBtn = document.getElementById('fs-btn');
+    function toggleFullscreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const docEl = document.documentElement;
+        const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+        if (req) req.call(docEl).catch(() => {});
+        fsBtn.innerHTML = '<span>\u2715 Exit Fullscreen</span>';
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+        if (exit) exit.call(document).catch(() => {});
+        fsBtn.innerHTML = '<span>\u26F6 Fullscreen</span>';
+      }
+    }
+    fsBtn.addEventListener('click', toggleFullscreen);
+
+    // Auto-dim button after 5 seconds of inactivity, wake up on remote key/mouse move
+    let fsTimer;
+    function resetFsButtonTimer() {
+      fsBtn.classList.remove('fade-out');
+      clearTimeout(fsTimer);
+      fsTimer = setTimeout(() => {
+        if (document.activeElement !== fsBtn) fsBtn.classList.add('fade-out');
+      }, 5000);
+    }
+    window.addEventListener('mousemove', resetFsButtonTimer);
+    window.addEventListener('keydown', (e) => {
+      resetFsButtonTimer();
+      // If user presses Enter or Space while focusing the body, toggle fullscreen
+      if ((e.key === 'Enter' || e.key === ' ' || e.keyCode === 13) && document.activeElement === document.body) {
+        toggleFullscreen();
+      }
+    });
+    resetFsButtonTimer();
+
     const loader = document.getElementById('loader');
     const iframe = document.getElementById('player');
     const video = document.getElementById('video-player');

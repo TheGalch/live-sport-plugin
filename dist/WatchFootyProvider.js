@@ -36,18 +36,25 @@ class WatchFootyProvider extends BaseProvider {
         for (const item of data) {
           const matchId = item.matchId;
           const title = item.title || `${item.teams?.home?.name || 'Home'} vs ${item.teams?.away?.name || 'Away'}`;
+          
+          // CRITICAL: Only include matches that actually have streams available!
+          // WatchFooty returns thousands of livescore-only fixtures with streams: []
+          if (!Array.isArray(item.streams) || item.streams.length === 0) {
+            continue;
+          }
+
           let status = 'upcoming';
           
           if (item.status === 'in' || item.status === 'live') {
             status = 'live';
-          } else if (item.status === 'post' || item.status === 'postponed' || item.status === 'cancelled') {
-            status = 'finished'; // Or upcoming, but we ignore finished usually
+          } else if (item.status === 'post' || item.status === 'post-final' || item.status === 'postponed' || item.status === 'cancelled') {
+            continue; // Skip ended matches
           }
 
           const matchTime = item.timestamp ? parseTimezone(item.timestamp, 'UTC') : Date.now();
           
           // Map dynamic sports directly from the API
-          const category = item.sport ? item.sport.toLowerCase() : 'football';
+          const category = this.normalizeCategory(item.sport);
 
           const posterUrl = item.poster ? (item.poster.startsWith('http') ? item.poster : `https://api.watchfooty.st${item.poster}`) : null;
 

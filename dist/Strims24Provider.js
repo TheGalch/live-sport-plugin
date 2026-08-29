@@ -106,16 +106,32 @@ class Strims24Provider extends BaseProvider {
     const sportId = this.SPORT_FS_ID[sport];
     if (sportId === undefined) return [];
     const prefix = sport === 'motorsport' ? 'fp_' : 'f_';
-    const url = `${this.flashBase}/${prefix}${sportId}_0_2_en_1`;
-    try {
-      const res = await this.fetchData.fire(url, { 'x-fsign': this.flashSign, accept: '*/*' });
-      if (!res) return [];
-      const text = await res.text();
-      return this.parseFlashData(text, sport);
-    } catch (e) {
-      console.error(`[${this.name}] Failed to fetch flashscore for ${sport}`, e.message);
-      return [];
+    
+    // Fetch today (0), yesterday (-1), and tomorrow (1) to cover all timezone and ongoing match boundaries
+    const days = [0, -1, 1];
+    const results = await Promise.allSettled(
+      days.map(async (d) => {
+        const url = `${this.flashBase}/${prefix}${sportId}_${d}_2_en_1`;
+        const res = await this.fetchData.fire(url, { 'x-fsign': this.flashSign, accept: '*/*' });
+        if (!res) return [];
+        const text = await res.text();
+        return this.parseFlashData(text, sport);
+      })
+    );
+
+    const events = [];
+    const seen = new Set();
+    for (const r of results) {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        for (const ev of r.value) {
+          if (ev && ev.id && !seen.has(ev.id)) {
+            seen.add(ev.id);
+            events.push(ev);
+          }
+        }
+      }
     }
+    return events;
   }
 
   async fetchStrimsMatches(sport, date) {
@@ -226,30 +242,19 @@ class Strims24Provider extends BaseProvider {
           }
         }
 
-        // Fallback for manual FS matches that were not in FlashScore feed
-        for (const fsId of manualFsIds) {
-          if (!processedFsIds.has(fsId)) {
-            matches.push(new MatchEntity({
-              id: `FS:${fsId}`,
-              title: `Live Match (${fsId})`,
-              category: this.normalizeCategory(sport),
-              date: now.toString(),
-              popular: '1',
-              sources: [{ source: 'strims24', id: `FS:${fsId}`, original_sport: sport }]
-            }));
-          }
-        }
+
 
         for (const it of customItems) {
            const kickoff = it.start_ts ? it.start_ts * 1000 : now;
            const isLive = kickoff <= now && kickoff > now - FOUR_HOURS;
+           const cleanMatchId = it.match_id ? (it.match_id.startsWith('CUST:') ? it.match_id : `CUST:${it.match_id}`) : `CUST:${Date.now()}`;
            matches.push(new MatchEntity({
-              id: `CUST:${it.match_id}`,
+              id: cleanMatchId,
               title: it.name || it.match_id,
               category: this.normalizeCategory(sport),
               date: kickoff.toString(),
               popular: isLive ? '1' : '0',
-              sources: [{ source: 'strims24', id: `CUST:${it.match_id}`, original_sport: sport }]
+              sources: [{ source: 'strims24', id: cleanMatchId, original_sport: sport }]
             }));
         }
       }
@@ -375,13 +380,14 @@ class Strims24Provider extends BaseProvider {
 
   async resolveStream(sourceId, matchCategory, matchTitle) {
     try {
-      const isFs = sourceId.startsWith('FS:');
-      const isCh = sourceId.startsWith('CH:');
-      const cleanId = sourceId.replace(/^(FS:|CUST:|CH:)/, '');
+      const normalizedSourceId = String(sourceId).replace(/^(CUST:)+/, 'CUST:').replace(/^(FS:)+/, 'FS:').replace(/^(CH:)+/, 'CH:');
+      const isFs = normalizedSourceId.startsWith('FS:');
+      const isCh = normalizedSourceId.startsWith('CH:');
+      const cleanId = normalizedSourceId.replace(/^(FS:|CUST:|CH:)/, '');
 
       let dbDetail = null;
       if (!isCh) {
-          const dbDetailRes = await this.fetchData.fire(`${this.baseUrl}/api/v1/match/${sourceId}`).catch(() => null);
+          const dbDetailRes = await this.fetchData.fire(`${this.baseUrl}/api/v1/match/${normalizedSourceId}`).catch(() => null);
           if (dbDetailRes && dbDetailRes.status === 200) dbDetail = await dbDetailRes.json();
       }
 

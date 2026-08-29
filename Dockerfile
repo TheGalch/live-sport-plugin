@@ -9,6 +9,9 @@ RUN npm install
 # Copy source code and assets
 COPY . .
 
+# Install internal resolver dependencies
+RUN cd resolver && npm install
+
 # Build the bundled distribution
 RUN npm run build
 
