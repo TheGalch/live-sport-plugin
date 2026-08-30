@@ -1,5 +1,6 @@
 const container = require('./container');
 const { getChannelLogo } = require('./services/ChannelLogoService');
+const { prewarmMatch } = require('./streams');
 
 /**
  * Accurately determines if an event is currently live right now.
@@ -349,10 +350,15 @@ async function handleMeta(type, id, config) {
     return { meta: null };
   }
 
+  // Prewarm: mint tokens for this match's top sources while the user is still
+  // on the detail page, so the eventual click is near-instant. Fire-and-forget.
+  try { prewarmMatch(match, config || {}).catch(() => {}); } catch (_) {}
+
   return { meta: mapMatchToMetaPreview(match, config || {}) };
 }
 
 module.exports = {
   handleCatalog,
-  handleMeta
+  handleMeta,
+  isMatchLive
 };

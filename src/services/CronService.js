@@ -1,8 +1,10 @@
 const cron = require('node-cron');
 
 class CronService {
-  constructor({ matchAggregator }) {
+  constructor({ matchAggregator, streamResolveCache, cacheService }) {
     this.matchAggregator = matchAggregator;
+    this.streamResolveCache = streamResolveCache;
+    this.cacheService = cacheService;
     this.syncing = false;
   }
 
@@ -10,7 +12,8 @@ class CronService {
     if (this.syncing) return;
     this.syncing = true;
     try {
-      await this.matchAggregator.syncMatches();
+      const activeMatches = await this.matchAggregator.syncMatches();
+      this.pruneStreamCache(activeMatches);
     } finally {
       this.syncing = false;
     }
@@ -26,6 +29,16 @@ class CronService {
         await this.runSync();
       } catch (err) {
         console.error('[CronService] Match sync failed:', err.message);
+      }
+    });
+
+    // Prewarm popular live matches every 3 minutes so hot streams are
+    // "already running" when a user clicks (tokens re-minted before expiry).
+    cron.schedule('*/3 * * * *', async () => {
+      try {
+        await this.prewarmPopular();
+      } catch (err) {
+        console.error('[CronService] Prewarm job failed:', err.message);
       }
     });
 
@@ -54,6 +67,32 @@ class CronService {
       }
     }, 1000);
   }
+
+  /** Drop stream-cache entries for matches that are no longer active. */
+  pruneStreamCache(activeMatches) {
+    try {
+      if (!this.streamResolveCache) return;
+      const ids = new Set((activeMatches || []).map(m => m && m.id).filter(Boolean));
+      this.streamResolveCache.pruneEnded(ids);
+    } catch (_) {}
+  }
+
+  /** Prewarm popular live matches so hot streams are "already running" when clicked. */
+  async prewarmPopular() {
+    try {
+      // Lazy requires avoid a require cycle (catalog -> streams -> container -> this).
+      const { isMatchLive } = require('../catalog');
+      const { prewarmMatch } = require('../streams');
+      const matches = this.cacheService ? this.cacheService.getMatches() : [];
+      const hot = matches.filter(m => m.popular === '1' && isMatchLive(m));
+      if (hot.length === 0) return;
+      console.log(`[CronService] Prewarming ${Math.min(hot.length, 10)} popular live matches...`);
+      await Promise.allSettled(hot.slice(0, 10).map(m => prewarmMatch(m, null)));
+    } catch (err) {
+      console.error('[CronService] Prewarm failed:', err.message);
+    }
+  }
+
 }
 
 module.exports = CronService;

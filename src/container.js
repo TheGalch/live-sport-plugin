@@ -22,6 +22,7 @@ const BeinArabicProvider = require('./providers/BeinArabicProvider');
 const StreamedPkProvider = require('./providers/StreamedPkProvider');
 
 const YamlProviderBuilder = require('./services/YamlProviderBuilder');
+const StreamResolveCache = require('./services/StreamResolveCache');
 
 const container = createContainer({
   injectionMode: InjectionMode.PROXY
@@ -34,7 +35,8 @@ container.register({
   m3u8Parser: asClass(M3U8ParserService).singleton(),
   cronService: asClass(CronService).singleton(),
   matchAggregator: asClass(MatchAggregator).singleton(),
-  streamScorer: asClass(StreamScoringService).singleton()
+  streamScorer: asClass(StreamScoringService).singleton(),
+  streamResolveCache: asValue(new StreamResolveCache())
 });
 
 // Build dynamic YAML Providers

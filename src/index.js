@@ -873,7 +873,11 @@ app.get('/watch', (req, res) => {
 // ─── Health Check ─────────────────────────────────────────────────────────────
 // Render pings this to confirm the service is alive
 
-app.get('/health', (_, res) => res.json({ status: 'ok', service: 'nuvio-live-sports' }));
+app.get('/health', (_, res) => {
+  let cache = null;
+  try { cache = container.resolve('streamResolveCache').stats(); } catch (_) {}
+  res.json({ status: 'ok', service: 'nuvio-live-sports', streamResolveCache: cache });
+});
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 

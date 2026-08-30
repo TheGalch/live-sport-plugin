@@ -88,7 +88,8 @@ class BaseProvider {
         method: options.method || 'GET',
         headers: options.headers || {},
         headersTimeout: 15000,
-        bodyTimeout: 15000
+        bodyTimeout: 15000,
+        maxRedirections: 5 // follow 301/302 (e.g. SportyHunter moved its base URL)
       };
       
       if (options.body) reqOptions.body = options.body;

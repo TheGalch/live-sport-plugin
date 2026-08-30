@@ -3,6 +3,11 @@ const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
 const { parseTimezone } = require('../timezone');
 
+// Kickoff window: the upstream API lists fixtures days ahead; most never get
+// channels and resolve to nothing. Keep live/recent events + 48 h lookahead only.
+const WINDOW_PAST_MS = 6 * 60 * 60 * 1000;   // started up to 6 h ago
+const WINDOW_FUTURE_MS = 48 * 60 * 60 * 1000; // or starting within 48 h
+
 class StreamSports99Provider extends BaseProvider {
   constructor(opts) {
     super(opts);
@@ -69,6 +74,15 @@ class StreamSports99Provider extends BaseProvider {
             if (item.status === 'live' || item.status === 'in') status = 'live';
 
             const matchTime = item.start ? new Date(item.start).getTime() : Date.now();
+
+            // Drop far-out fixtures: they never get channels and resolve to nothing.
+            // Live-flagged events are always kept (clock-skew tolerant).
+            if (item.start && Number.isFinite(matchTime)) {
+              const isLive = status === 'live';
+              if (!isLive && (matchTime < Date.now() - WINDOW_PAST_MS || matchTime > Date.now() + WINDOW_FUTURE_MS)) {
+                continue;
+              }
+            }
 
             matches.push(new MatchEntity({
               id: `ss99_${matchId}`,
