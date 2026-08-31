@@ -118,6 +118,147 @@ async function resolveSource(src, match, config) {
   return resStreams;
 }
 
+// Shared Impit client for stream health verification. Created lazily, at most
+// once per process; caches null on failure so verification falls back to undici.
+let sharedVerifyImpit;                // lazy singleton; undefined = not tried yet
+function getVerifyImpitClient() {
+  if (sharedVerifyImpit === undefined) {
+    try {
+      const { Impit } = require('impit');
+      sharedVerifyImpit = new Impit();
+    } catch (e) {
+      console.warn('[streams.js] Impit unavailable, verification will use undici:', e.message);
+      sharedVerifyImpit = null;
+    }
+  }
+  return sharedVerifyImpit;
+}
+
+// --- Stream Health Verification ---
+// Pings each direct stream once and drops dead ones (404/403/5xx, or 200 bodies
+// that are not M3U8). Web player links (no url or '/watch?') pass through
+// untouched. Runs once per mint (see mintVerifiedSources), not per request, so
+// cached results are served without re-verification.
+async function verifyStreams(streams, cacheKey, m3u8Parser, resolveCache) {
+  const impitClient = getVerifyImpitClient();
+
+  const checkedStreams = await Promise.all(streams.map(async (s) => {
+    // We only pre-flight check direct streams (m3u8 urls). Web player links are kept blindly.
+    if (!s.url || s.url.includes('/watch?')) return s;
+
+    let targetUrl = s.url;
+    let referer = '';
+    let origin = '';
+    // If the stream is routed through our manifest proxy, we extract the true upstream URL to ping
+    if (targetUrl.includes('/api/manifest')) {
+      try {
+        const urlObj = new URL('http://localhost' + targetUrl);
+        if (urlObj.searchParams.has('url')) {
+          targetUrl = urlObj.searchParams.get('url');
+        }
+        if (urlObj.searchParams.has('referer')) {
+          referer = urlObj.searchParams.get('referer');
+        }
+        if (urlObj.searchParams.has('origin')) {
+          origin = urlObj.searchParams.get('origin');
+        }
+      } catch (e) {}
+    }
+
+    try {
+      const abortController = new AbortController();
+      const timeout = setTimeout(() => abortController.abort(), 2000); // 2 second strict timeout
+
+      if (!referer && s.behaviorHints && s.behaviorHints.proxyHeaders && s.behaviorHints.proxyHeaders.request) {
+        referer = s.behaviorHints.proxyHeaders.request.Referer || '';
+      }
+      if (!origin && referer) {
+        try { origin = new URL(referer).origin; } catch (_) {}
+      }
+
+      let res;
+      let bodySample = '';
+
+      const reqHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+        'Referer': referer
+      };
+      if (origin) reqHeaders['Origin'] = origin;
+
+      try {
+        if (!impitClient) throw new Error('impit unavailable');
+        res = await impitClient.fetch(targetUrl, {
+          method: 'GET',
+          headers: reqHeaders,
+          signal: abortController.signal
+        });
+        bodySample = await res.text();
+      } catch (impitErr) {
+        // Fallback to undici
+        try {
+          const { request } = require('undici');
+          const uRes = await request(targetUrl, {
+            method: 'GET',
+            headers: reqHeaders,
+            headersTimeout: 3000,
+            bodyTimeout: 3000,
+            signal: abortController.signal
+          });
+          res = { status: uRes.statusCode };
+          bodySample = await uRes.body.text();
+        } catch (undiciErr) {
+          clearTimeout(timeout);
+          console.log(`[Filter] Dropped timeout/error stream: ${targetUrl} - ${impitErr.message}`);
+          if (cacheKey) resolveCache.noteFailure(cacheKey);
+          return null;
+        }
+      }
+
+      clearTimeout(timeout);
+
+      // Edge servers return 404 for dead streams, 403 for IP-locked/expired tokens, 502 for upstream failures
+      if (res.status === 404 || res.status === 403 || res.status >= 500) {
+        console.log(`[Filter] Dropped dead stream (${res.status}): ${targetUrl}`);
+        if (cacheKey) resolveCache.noteFailure(cacheKey);
+        return null;
+      }
+
+      // Some CDNs (like lb8.strmd.st) return 200 OK with "Not found" when token is expired.
+      // If it doesn't contain #EXT, it's not a valid m3u8 playlist.
+      if (!bodySample.includes('#EXT')) {
+        console.log(`[Filter] Dropped fake 200 stream (Invalid M3U8 body): ${targetUrl}`);
+        if (cacheKey) resolveCache.noteFailure(cacheKey);
+        return null;
+      }
+
+      // Parse Master Playlist quality, framerate (FPS), and bitrate in real-time
+      const parsedQuality = m3u8Parser.parseManifestText(bodySample);
+      if (parsedQuality) {
+        if (parsedQuality.qualityTag) s.quality = parsedQuality.qualityTag;
+        if (parsedQuality.resolution) s.resolution = parsedQuality.resolution;
+        if (parsedQuality.bitrateTag) s.bitrate = parsedQuality.bitrateTag;
+      }
+
+      if (cacheKey) resolveCache.noteSuccess(cacheKey);
+      return s;
+    } catch (err) {
+      console.log(`[Filter] Dropped timeout/error stream: ${targetUrl} - ${err.message}`);
+      return null;
+    }
+  }));
+
+  return checkedStreams.filter(Boolean);
+}
+
+// Mint streams for a single source and health-verify them before they enter the
+// cache, so verification runs once per mint instead of on every request.
+async function mintVerifiedSources(src, match, config, cacheKey) {
+  const resolveCache = container.resolve('streamResolveCache');
+  const m3u8Parser = container.resolve('m3u8Parser');
+  const minted = await resolveSource(src, match, config);
+  return verifyStreams(minted, cacheKey, m3u8Parser, resolveCache);
+}
+
 // Prewarm: mint tokens for a match's top sources before the user clicks
 async function prewarmMatch(match, config, topN = 3) {
   try {
@@ -130,7 +271,7 @@ async function prewarmMatch(match, config, topN = 3) {
     await Promise.allSettled(targets.map(src => {
       const key = `${src.source}:${match.id}:${src.id}`;
       if (resolveCache.get(key)) return Promise.resolve(null);
-      return resolveCache.getOrCreate(key, () => resolveSource(src, match, config || null));
+      return resolveCache.getOrCreate(key, () => mintVerifiedSources(src, match, config || null, key));
     }));
   } catch (err) {
     console.warn('[Prewarm] failed:', err.message);
@@ -156,14 +297,13 @@ async function handleStream(type, id, config) {
   const streams = [];
 
   const activeSources = selectSources(match.sources, config);
-  const m3u8Parser = container.resolve('m3u8Parser');
   const streamScorer = container.resolve('streamScorer');
 
   const resolveCache = container.resolve('streamResolveCache');
 
   const resolvePromises = activeSources.map(async (src) => {
     const key = `${src.source}:${matchId}:${src.id}`;
-    const minted = await resolveCache.getOrCreate(key, () => resolveSource(src, match, config));
+    const minted = await resolveCache.getOrCreate(key, () => mintVerifiedSources(src, match, config, key));
     return minted.map((s) => ({ ...s, _cacheKey: key }));
   });
 
@@ -177,7 +317,6 @@ async function handleStream(type, id, config) {
   // --- Inject relevant 24/7 channels based on category ---
   const isStreamFreeEnabled = !config || !config.sources || config.sources === 'none' || config.sources.split(',').includes('streamfree');
   if (match.category === 'cricket' && isStreamFreeEnabled) {
-    const sfProvider = container.resolve('streamFreeProvider');
     try {
       const extraChannels = [
         { id: 'willow', title: 'Willow TV' },
@@ -186,7 +325,12 @@ async function handleStream(type, id, config) {
       
       const warmed = await Promise.all(extraChannels.map(async (channel) => {
         const key = `streamfree:__channel__:${channel.id}`;
-        const resolved = await resolveCache.getOrCreate(key, () => sfProvider.resolveStream(channel.id, 'cricket', channel.title));
+        const resolved = await resolveCache.getOrCreate(key, () => mintVerifiedSources(
+          { source: 'streamfree', id: channel.id, original_category: 'cricket' },
+          { category: 'cricket', title: channel.title },
+          config,
+          key
+        ));
         return resolved.map((s) => ({ ...s, _cacheKey: key }));
       }));
       warmed.flat().forEach((s) => {
@@ -301,122 +445,6 @@ async function handleStream(type, id, config) {
     }
   });
 
-// --- Stream Health Verification ---
-  const { Impit } = require('impit');
-  const impitClient = new Impit();
-
-  const checkedStreams = await Promise.all(streams.map(async (s) => {
-    // We only pre-flight check direct streams (m3u8 urls). Web player links are kept blindly.
-    if (!s.url || s.url.includes('/watch?')) return s;
-
-    let targetUrl = s.url;
-    let referer = '';
-    let origin = '';
-    // If the stream is routed through our manifest proxy, we extract the true upstream URL to ping
-    if (targetUrl.includes('/api/manifest')) {
-      try {
-        const urlObj = new URL('http://localhost' + targetUrl);
-        if (urlObj.searchParams.has('url')) {
-          targetUrl = urlObj.searchParams.get('url');
-        }
-        if (urlObj.searchParams.has('referer')) {
-          referer = urlObj.searchParams.get('referer');
-        }
-        if (urlObj.searchParams.has('origin')) {
-          origin = urlObj.searchParams.get('origin');
-        }
-      } catch (e) {}
-    }
-
-    try {
-      const abortController = new AbortController();
-      const timeout = setTimeout(() => abortController.abort(), 2000); // 2 second strict timeout
-
-      if (!referer && s.behaviorHints && s.behaviorHints.proxyHeaders && s.behaviorHints.proxyHeaders.request) {
-        referer = s.behaviorHints.proxyHeaders.request.Referer || '';
-      }
-      if (!origin && referer) {
-        try { origin = new URL(referer).origin; } catch (_) {}
-      }
-
-      let res;
-      let bodySample = '';
-
-      const reqHeaders = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        'Referer': referer
-      };
-      if (origin) reqHeaders['Origin'] = origin;
-
-      try {
-        res = await impitClient.fetch(targetUrl, {
-          method: 'GET',
-          headers: reqHeaders,
-          signal: abortController.signal
-        });
-        bodySample = await res.text();
-      } catch (impitErr) {
-        // Fallback to undici
-        try {
-          const { request } = require('undici');
-          const uRes = await request(targetUrl, {
-            method: 'GET',
-            headers: reqHeaders,
-            headersTimeout: 3000,
-            bodyTimeout: 3000,
-            signal: abortController.signal
-          });
-          res = { status: uRes.statusCode };
-          bodySample = await uRes.body.text();
-        } catch (undiciErr) {
-          clearTimeout(timeout);
-          console.log(`[Filter] Dropped timeout/error stream: ${targetUrl} - ${impitErr.message}`);
-          if (s._cacheKey) resolveCache.noteFailure(s._cacheKey);
-          return null;
-        }
-      }
-
-      clearTimeout(timeout);
-
-      // Edge servers return 404 for dead streams, 403 for IP-locked/expired tokens, 502 for upstream failures
-      if (res.status === 404 || res.status === 403 || res.status >= 500) {
-        console.log(`[Filter] Dropped dead stream (${res.status}): ${targetUrl}`);
-        if (s._cacheKey) resolveCache.noteFailure(s._cacheKey);
-        return null;
-      }
-      
-      // Some CDNs (like lb8.strmd.st) return 200 OK with "Not found" when token is expired.
-      // If it doesn't contain #EXT, it's not a valid m3u8 playlist.
-      if (!bodySample.includes('#EXT')) {
-        console.log(`[Filter] Dropped fake 200 stream (Invalid M3U8 body): ${targetUrl}`);
-        if (s._cacheKey) resolveCache.noteFailure(s._cacheKey);
-        return null;
-      }
-
-      // Parse Master Playlist quality, framerate (FPS), and bitrate in real-time
-      const parsedQuality = m3u8Parser.parseManifestText(bodySample);
-      if (parsedQuality) {
-        if (parsedQuality.qualityTag) s.quality = parsedQuality.qualityTag;
-        if (parsedQuality.resolution) s.resolution = parsedQuality.resolution;
-        if (parsedQuality.bitrateTag) s.bitrate = parsedQuality.bitrateTag;
-        
-        if (s.title && s.title.includes('📺 Quality:')) {
-          s.title = s.title.replace(/📺 Quality: [^\n]+/, `📺 Quality: ${parsedQuality.fullQuality}`);
-        }
-      }
-      
-      if (s._cacheKey) resolveCache.noteSuccess(s._cacheKey);
-      return s;
-    } catch (err) {
-      console.log(`[Filter] Dropped timeout/error stream: ${targetUrl} - ${err.message}`);
-      return null;
-    }
-  }));
-
-  // Re-assign filtered array
-  streams.length = 0;
-  streams.push(...checkedStreams.filter(Boolean));
-
   // Sort streams: Direct streams first, then by score descending
   streams.sort((a, b) => {
     const aIsDirect = a.name === '⚡ Direct Stream' ? 1 : 0;
@@ -425,12 +453,13 @@ async function handleStream(type, id, config) {
     return b.score - a.score;
   });
 
-  // Return streams with cacheMaxAge: 0 to force Nuvio to fetch a fresh token every time!
-  return { 
-    streams, 
-    cacheMaxAge: 0, 
-    staleRevalidate: 0, 
-    staleError: 0 
+  // Verification now happens once per mint (mintVerifiedSources), not per request.
+  // Adaptive per-source TTLs keep tokens fresh, so clients may hold the list 30s.
+  return {
+    streams,
+    cacheMaxAge: 30,
+    staleRevalidate: 30,
+    staleError: 60
   };
 }
 

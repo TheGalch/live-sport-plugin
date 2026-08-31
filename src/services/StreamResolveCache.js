@@ -4,7 +4,7 @@
  * Design: DELIVERY/nuvio-prewarm-cache-design.md
  *  - Single-flight mints: N concurrent requests for the same source -> ONE resolveStream call.
  *  - Per-source adaptive TTLs: healthy pre-flight doubles the TTL (cap 10 min),
- *    a failed pre-flight halves it (floor 20 s) and evicts the entry.
+ *    a failed pre-flight halves it (floor 60 s) and evicts the entry.
  *  - Negative cache (~30 s) for sources that resolve to nothing or fail, so dead
  *    sources are not re-scraped on every click. getOrCreate NEVER rejects.
  *  - Entries are shallow-cloned on read, so label/preflight mutations in
@@ -13,7 +13,7 @@
  */
 
 const DEFAULT_TTL_MS = 60 * 1000;
-const MIN_TTL_MS = 20 * 1000;
+const MIN_TTL_MS = 60 * 1000;
 const MAX_TTL_MS = 10 * 60 * 1000;
 const NEGATIVE_TTL_MS = 30 * 1000;
 const MAX_ENTRIES = 200;

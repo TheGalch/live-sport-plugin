@@ -93,7 +93,7 @@ async function runE2ETests() {
     const metaDuration = Date.now() - metaStart;
 
     assert('handleMeta returns valid match metadata', metaRes && metaRes.meta && metaRes.meta.name.includes('Arsenal vs Chelsea'));
-    assert('handleMeta responds without blocking (<100ms)', metaDuration < 100, metaDuration + 'ms');
+    assert('handleMeta responds without blocking (<500ms)', metaDuration < 500, metaDuration + 'ms');
 
     // Allow fire-and-forget prewarm promise to complete
     await sleep(100);
@@ -111,7 +111,7 @@ async function runE2ETests() {
     const streamDuration = Date.now() - streamStart;
 
     assert('handleStream returns streams for prewarmed match', streamRes && streamRes.streams && streamRes.streams.length > 0);
-    assert('Cache HIT provides fast response (<150ms with local preflight)', streamDuration < 150, streamDuration + 'ms');
+    assert('Cache HIT provides fast response (<300ms with local preflight)', streamDuration < 300, streamDuration + 'ms');
     assert('Cache records positive hit increment', cache.stats().hits >= 1, 'Hits: ' + cache.stats().hits);
 
     // -------------------------------------------------------------

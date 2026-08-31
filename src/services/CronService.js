@@ -1,5 +1,9 @@
 const cron = require('node-cron');
 
+// Catalog stale-while-revalidate window: once the cache is older than this,
+// the next catalog/meta request triggers a background re-sync (see ensureFresh).
+const REVALIDATE_AFTER_MS = parseInt(process.env.CATALOG_REVALIDATE_MS, 10) || 10 * 60 * 1000;
+
 class CronService {
   constructor({ matchAggregator, streamResolveCache, cacheService }) {
     this.matchAggregator = matchAggregator;
@@ -16,6 +20,20 @@ class CronService {
       this.pruneStreamCache(activeMatches);
     } finally {
       this.syncing = false;
+    }
+  }
+
+  // Catalog stale-while-revalidate: serve the cached list immediately and
+  // refresh in the background once the cache passes REVALIDATE_AFTER_MS.
+  // Traffic-driven, so idle instances stay quiet; the 4-hour cron is the floor.
+  ensureFresh() {
+    try {
+      if (this.syncing) return;
+      if (!this.cacheService || !this.cacheService.isStale(REVALIDATE_AFTER_MS)) return;
+      console.log('[CronService] Catalog stale, triggering background re-sync (SWR)...');
+      this.runSync().catch((err) => console.error('[CronService] SWR sync failed:', err.message));
+    } catch (err) {
+      console.error('[CronService] ensureFresh error:', err.message);
     }
   }
 

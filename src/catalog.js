@@ -243,6 +243,10 @@ async function handleCatalog(type, id, extra, config) {
   if (type !== 'tv' || !id.startsWith('nuvio_sports_')) {
     return { metas: [] };
   }
+
+  // Fire-and-forget stale-while-revalidate: return the cached list now and let
+  // CronService refresh it in the background once it passes the revalidate window.
+  container.resolve('cronService').ensureFresh();
   
   const conf = config || (extra && extra.config) || {};
 
@@ -340,6 +344,9 @@ async function handleMeta(type, id, config) {
   if (type !== 'tv' || !id.startsWith('nuvio_sport_')) {
     return { meta: null };
   }
+
+  // Fire-and-forget stale-while-revalidate, same as handleCatalog.
+  container.resolve('cronService').ensureFresh();
 
   const matchId = id.replace('nuvio_sport_', '');
   const cacheService = container.resolve('cacheService');

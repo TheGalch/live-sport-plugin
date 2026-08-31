@@ -107,104 +107,191 @@ app.get('/api/matches', (req, res) => {
   res.json(matches);
 });
 
+// ─── Manifest proxy: shared client + validated short-TTL cache ──────────────
+// Live HLS players reload /api/manifest every 2-6 s per viewer. A shared Impit
+// client (keep-alive) + a validated short-TTL cache removes the per-viewer TLS
+// handshake and repeated upstream fetches. Key = url|referer|origin (token
+// binding depends on all three). Only bodies that passed the #EXT validation
+// are cached. No HTTP Cache-Control is set - players must never cache live
+// manifests client-side.
+const MANIFEST_TTL_MS = 3000;
+const MANIFEST_CACHE_MAX = 100;
+const MANIFEST_NEGATIVE_TTL_MS = 15 * 1000;
+const manifestCache = new Map();      // key -> { body, expiresAt, lastAccess }
+const manifestInFlight = new Map();   // key -> Promise (coalesced upstream fetch)
+
+let sharedImpitClient;                // lazy singleton; undefined = not tried yet
+function getSharedImpitClient() {
+  if (sharedImpitClient === undefined) {
+    try {
+      const { Impit } = require('impit');
+      sharedImpitClient = new Impit();
+    } catch (_) {
+      sharedImpitClient = null;
+    }
+  }
+  return sharedImpitClient;
+}
+
+// Returns the stored cache ENTRY (positive or negative), or null when
+// missing/expired (expired entries are deleted as before).
+function manifestCacheGet(key) {
+  const e = manifestCache.get(key);
+  if (!e) return null;
+  const now = Date.now();
+  if (now > e.expiresAt) {
+    manifestCache.delete(key);
+    return null;
+  }
+  e.lastAccess = now;
+  return e;
+}
+
+function manifestCacheSet(key, body) {
+  const now = Date.now();
+  manifestCache.set(key, { body, expiresAt: now + MANIFEST_TTL_MS, lastAccess: now });
+  evictManifestCacheIfNeeded();
+}
+
+function evictManifestCacheIfNeeded() {
+  if (manifestCache.size > MANIFEST_CACHE_MAX) {
+    const byAccess = [...manifestCache.entries()].sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+    const excess = manifestCache.size - MANIFEST_CACHE_MAX;
+    for (let i = 0; i < excess; i++) manifestCache.delete(byAccess[i][0]);
+  }
+}
+
+// Negative caching: dead upstreams (non-m3u8 body / fetch failure) are stored
+// briefly so player polls stop re-fetching them until the entry expires.
+function manifestCacheSetNegative(key, status, body) {
+  const now = Date.now();
+  manifestCache.set(key, { negative: true, status, body, expiresAt: now + MANIFEST_NEGATIVE_TTL_MS, lastAccess: now });
+  evictManifestCacheIfNeeded();
+}
+
+// Fetch + validate the upstream manifest. Throws on failure so coalesced
+// waiters share the same outcome; successful bodies are cached by the caller.
+async function fetchUpstreamManifest(targetUrl, referer, origin) {
+  const headers = {
+    'Referer': referer,
+    'Origin': origin,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36'
+  };
+  try {
+    const client = getSharedImpitClient();
+    if (!client) throw new Error('impit unavailable');
+    // Impit has no deadline here - race a hard 10 s timeout so a hung upstream
+    // can never hold the viewer's poll (and its coalesced waiters).
+    return await Promise.race([
+      (async () => {
+        const fetchRes = await client.fetch(targetUrl, { headers });
+        if (!fetchRes.ok) throw new Error(`HTTP ${fetchRes.status}`);
+        return await fetchRes.text();
+      })(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('impit timeout 10000ms')), 10000))
+    ]);
+  } catch (e) {
+    // Fallback to undici (redirects followed)
+    const { request } = require('undici');
+    const fetchRes = await request(targetUrl, {
+      headers,
+      headersTimeout: 10000,
+      bodyTimeout: 10000
+      // NOTE: undici v8 rejects `maxRedirections` on request(); it must not be
+      // passed here or the fallback path itself throws (see BaseProvider.proxyFetch).
+    });
+    return await fetchRes.body.text();
+  }
+}
+
 app.get('/api/manifest', async (req, res) => {
   const targetUrl = req.query.url;
   const referer = req.query.referer || 'https://embed.st/';
   const origin = req.query.origin || 'https://embed.st';
-  
+
   if (!targetUrl) return res.status(400).send('Missing url');
 
-  try {
-    let out = '';
-  try {
-    const { Impit } = require('impit');
-    const client = new Impit();
-    const fetchRes = await client.fetch(targetUrl, {
-      headers: {
-        "Referer": referer,
-        "Origin": origin,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
-      }
-    });
-    if (!fetchRes.ok) throw new Error(`HTTP ${fetchRes.status}`);
-    out = await fetchRes.text();
-
-    // If the upstream server returned a "fake" 200 OK but it's not a valid M3U8, reject it
-    if (!out.includes('#EXT')) {
-      console.error('[ManifestProxy] Upstream returned non-m3u8 body for', targetUrl);
-      return res.status(404).send('Stream not found or expired');
-    }
-  } catch (e) {
-    console.log("[Manifest Proxy] impit failed, falling back to undici:", e.message);
-    try {
-      const { request } = require('undici');
-      const fetchRes = await request(targetUrl, {
-        headers: {
-          "Referer": referer,
-          "Origin": origin,
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
-        },
-        headersTimeout: 10000,
-        bodyTimeout: 10000
-      });
-      out = await fetchRes.body.text();
-      
-      if (!out.includes('#EXT')) {
-        console.error('[ManifestProxy] Upstream returned non-m3u8 body (undici) for', targetUrl);
-        return res.status(404).send('Stream not found or expired');
-      }
-    } catch (err) {
-      return res.status(502).send('Undici fallback failed: ' + err.message + ' | Impit Error: ' + e.message);
-    }
+  const cacheKey = `${targetUrl}|${referer}|${origin}`;
+  const entry = manifestCacheGet(cacheKey);
+  if (entry && entry.negative) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Manifest-Cache', 'NEGATIVE');
+    return res.status(entry.status).send(entry.body);
   }
-    
-    // Rewrite the manifest
-    const lines = out.split('\n');
-    const rewritten = lines.map(line => {
-      const l = line.trim();
-      if (!l || l.startsWith('#')) return line;
-      
-      // It's a URL
-      let absoluteUrl = l;
-      try {
-        // Native URL resolution handles all edge cases perfectly:
-        // root-relative (/), parent-relative (../), protocol-relative (//), and absolute.
-        const chunkUrl = new URL(l, targetUrl);
-        const manifestUrl = new URL(targetUrl);
-        
-        // IMPORTANT: Merge manifest query params (auth tokens) into chunk URL
-        manifestUrl.searchParams.forEach((val, key) => {
-          if (!chunkUrl.searchParams.has(key)) {
-            chunkUrl.searchParams.set(key, val);
-          }
-        });
-        absoluteUrl = chunkUrl.toString();
-      } catch (err) {
-        // Fallback to the original line if URL parsing fails (shouldn't happen for valid manifests)
-        absoluteUrl = l;
-      }
-      
-      // If it's a sub-playlist, route it back through our proxy!
-      if (absoluteUrl.includes('.m3u8')) {
-         return `/api/manifest?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
-      }
-      
-      // If it's a .ts chunk, return the absolute URL directly (bypassing Nuvio for video data!)
-      if ((absoluteUrl.includes('.image') || absoluteUrl.includes('.js')) && !absoluteUrl.includes('.ts') && !absoluteUrl.includes('.m3u8')) {
-         absoluteUrl += '#.ts';
-      }
-      return absoluteUrl;
-    });
-
+  if (entry) {
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.send(rewritten.join('\n'));
+    res.setHeader('X-Manifest-Cache', 'HIT');
+    return res.send(entry.body);
+  }
+
+  try {
+    let fetchPromise = manifestInFlight.get(cacheKey);
+    if (!fetchPromise) {
+      fetchPromise = (async () => {
+        const out = await fetchUpstreamManifest(targetUrl, referer, origin);
+        if (!out.includes('#EXT')) {
+          console.error('[ManifestProxy] Upstream returned non-m3u8 body for', targetUrl);
+          throw new Error('Upstream returned non-m3u8 body');
+        }
+
+        // Rewrite the manifest
+        const lines = out.split('\n');
+        const rewritten = lines.map(line => {
+          const l = line.trim();
+          if (!l || l.startsWith('#')) return line;
+
+          let absoluteUrl = l;
+          try {
+            const chunkUrl = new URL(l, targetUrl);
+            const manifestUrl = new URL(targetUrl);
+
+            manifestUrl.searchParams.forEach((val, key) => {
+              if (!chunkUrl.searchParams.has(key)) {
+                chunkUrl.searchParams.set(key, val);
+              }
+            });
+            absoluteUrl = chunkUrl.toString();
+          } catch (err) {
+            absoluteUrl = l;
+          }
+
+          if (absoluteUrl.includes('.m3u8')) {
+            return `/api/manifest?url=${encodeURIComponent(absoluteUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
+          }
+
+          if ((absoluteUrl.includes('.image') || absoluteUrl.includes('.js')) && !absoluteUrl.includes('.ts') && !absoluteUrl.includes('.m3u8')) {
+            absoluteUrl += '#.ts';
+          }
+          return absoluteUrl;
+        });
+
+        const rewrittenResult = rewritten.join('\n');
+        manifestCacheSet(cacheKey, rewrittenResult);
+        return rewrittenResult;
+      })().finally(() => {
+        manifestInFlight.delete(cacheKey);
+      });
+      manifestInFlight.set(cacheKey, fetchPromise);
+    }
+
+    const finalBody = await fetchPromise;
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Manifest-Cache', 'MISS');
+    res.send(finalBody);
   } catch (err) {
+    // Preserve the old 404 semantics so players can fail over to another stream.
+    // Failures are negatively cached (15 s) so player polls stop hammering the dead upstream.
+    if (err.message === 'Upstream returned non-m3u8 body') {
+      manifestCacheSetNegative(cacheKey, 404, 'Stream not found or expired');
+      return res.status(404).send('Stream not found or expired');
+    }
     console.error('[ManifestProxy] Error:', err.message);
-    res.status(500).send('Manifest proxy error');
+    manifestCacheSetNegative(cacheKey, 502, 'Manifest proxy error: ' + err.message);
+    return res.status(502).send('Manifest proxy error: ' + err.message);
   }
 });
-
 
 // ─── /api/proxy-embed — CORS-safe embed HTML fetcher (SSRF-protected) ────────
 // Fetches the HTML of a sports embed page on behalf of the client browser.

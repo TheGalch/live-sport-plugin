@@ -5,11 +5,16 @@
  * popular abbreviations into single collision-safe compound tokens so that
  * Jaccard / subset matching cannot accidentally merge different teams that share
  * a single word (e.g. "Inter Milan" vs "AC Milan" both contain "milan").
+ *
+ * ORDER MATTERS: more specific aliases (inter miami, inter turku) must come
+ * before the bare-"inter" rule, otherwise "Inter Miami" would compound to
+ * "intermilan" and collide with Inter Milan.
  */
 function _compoundify(t) {
   const aliases = [
     // Football (Soccer)
     [/\bman(chester)?\s*utd\b|\bmanchester\s*united\b/g, 'manchesterunited'],
+    [/\bman\.?\s+united\b/g, 'manchesterunited'], // "Man United" / "Man. United" (gap found by A/B testing)
     [/\bman(chester)?\s*city\b/g, 'manchestercity'],
     [/\bspurs\b|\btottenham(\s*hotspur)?\b/g, 'tottenham'],
     [/\bwolves\b|\bwolverhampton(\s*wanderers)?\b/g, 'wolverhampton'],
@@ -17,6 +22,9 @@ function _compoundify(t) {
     [/\bbayern(\s*m[uü]nchen)?\b|\bbayern\s*munich\b/g, 'bayernmunich'],
     [/\batl(etico)?\s*madrid\b/g, 'atleticomadrid'],
     [/\breal\s*madrid\b|\br\s*madrid\b/g, 'realmadrid'],
+    // inter variants must precede the bare-inter rule below
+    [/\binter\s*miami\b/g, 'intermiami'],
+    [/\binter\s*turku\b/g, 'interturku'],
     [/\binter(\s*milan)?\b|\binternazionale\b/g, 'intermilan'],
     [/\bac\s*milan\b/g, 'acmilan'],
     [/\bborussia\s*dortmund\b|\bbvb\b|\bdortmund\b/g, 'borussiadortmund'],
@@ -25,8 +33,7 @@ function _compoundify(t) {
     [/\bwest\s*ham(\s*united)?\b/g, 'westham'],
     [/\bcrystal\s*palace\b/g, 'crystalpalace'],
     [/\bnewcastle(\s*united)?\b/g, 'newcastle'],
-    [/\bnottingham\s*forest\b/g, 'nottinghamforest'],
-    [/\bnott(?:s)?\s*forest\b/g, 'nottinghamforest'],
+    [/\bnottingham\s*forest\b|\bnott(?:s|m)\s+forest\b/g, 'nottinghamforest'],
     [/\bleicester(\s*city)?\b/g, 'leicestercity'],
     [/\bsheff(?:ield)?\s*(?:utd|united)\b/g, 'sheffieldunited'],
     [/\bbe(?:in\s*sport|\s*in)\b/g, 'beinsport'],
@@ -65,7 +72,9 @@ function _stripNoise(t) {
 }
 
 function _tokenize(t) {
-  return t.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+  return t.replace(/[^a-z0-9]/g, ' ').split(/\s+/)
+    .filter(w => w.length > 2)
+    .map(w => (w.length > 3 && w.endsWith('s')) ? w.slice(0, -1) : w); // naive singular: newells->newell, sports->sport
 }
 
 /**
@@ -108,69 +117,131 @@ class MatchAggregator {
     this.cacheService = cacheService;
   }
 
-  isSameEvent(e1, e2) {
+  /**
+   * Precompute everything isSameEvent needs ONCE per match. The merge loop is
+   * O(N^2) in pair comparisons; doing the regex-heavy normalization here instead
+   * of inside every comparison removes ~50x of repeated work on large catalogs.
+   */
+  _precompute(e) {
+    const title = e && e.title ? String(e.title) : '';
+    const id = e && e.id != null ? String(e.id) : '';
+    return {
+      id,
+      category: e && e.category ? String(e.category) : '',
+      date: Number(e && e.date) || 0,
+      teams: _tryExtractTeams(title),
+      tokens: new Set(_tokenize(_compoundify(_stripNoise(title)))),
+      norm: _compoundify(_stripNoise(title)).replace(/\s+/g, ' ').trim(),
+      digits: (title.match(/\d+/g) || []).sort().join(','),
+      bein: id.startsWith('bein_ar')
+    };
+  }
+
+  /**
+   * Merge decision on precomputed matches. Same decision tree as before, with
+   * two fixes found by A/B testing against the real catalog:
+   *   - "Man United" style alias gap (same match, two catalog names)
+   *   - channel-like titles (no team-vs-team parse) collapsing under a loose
+   *     Jaccard rule ("Sky Sports F1" + "Sky Sports Main Event" merged;
+   *     "US Open Court 13" + "Court 7" merged)
+   */
+  _sameEventPre(p1, p2) {
     // 1. Category mismatch guard
-    if (e1.category && e2.category && e1.category !== 'other' && e2.category !== 'other' && e1.category !== e2.category) {
+    if (p1.category && p2.category && p1.category !== 'other' && p2.category !== 'other' && p1.category !== p2.category) {
       return false;
     }
     // 2. Exact ID match
-    if (e1.id && e1.id === e2.id) return true;
+    if (p1.id && p2.id && p1.id === p2.id) return true;
     // 3. BeinArabic isolation — never merge with external events
-    if (e1.id && e2.id && (e1.id.startsWith('bein_ar') || e2.id.startsWith('bein_ar'))) return false;
+    if (p1.bein || p2.bein) return false;
     // 4. Date window guard — events more than 24h apart are definitely different
-    const d1 = Number(e1.date) || 0;
-    const d2 = Number(e2.date) || 0;
-    if (d1 && d2 && Math.abs(d1 - d2) > 86400000) return false;
+    if (p1.date && p2.date && Math.abs(p1.date - p2.date) > 86400000) return false;
 
     // 5. Dual-team extraction — if both titles parse as "team1 vs team2", require
-    //    BOTH teams to independently fuzzy-match. This prevents merging
-    //    "Real Madrid vs Barcelona" with "Atletico Madrid vs Barcelona".
-    const t1 = _tryExtractTeams(e1.title);
-    const t2 = _tryExtractTeams(e2.title);
-    if (t1 && t2) {
-      const fwdMatch = _teamsSimilar(t1[0], t2[0]) && _teamsSimilar(t1[1], t2[1]);
-      const revMatch = _teamsSimilar(t1[0], t2[1]) && _teamsSimilar(t1[1], t2[0]);
-      return fwdMatch || revMatch;
+    //    BOTH teams to independently fuzzy-match.
+    if (p1.teams && p2.teams) {
+      const fwd = _teamsSimilar(p1.teams[0], p2.teams[0]) && _teamsSimilar(p1.teams[1], p2.teams[1]);
+      const rev = _teamsSimilar(p1.teams[0], p2.teams[1]) && _teamsSimilar(p1.teams[1], p2.teams[0]);
+      return fwd || rev;
     }
 
-    // 6. Fallback: Jaccard token overlap for channels / non-fixture titles
-    const tokens1 = _tokenize(_compoundify(_stripNoise(e1.title)));
-    const tokens2 = _tokenize(_compoundify(_stripNoise(e2.title)));
-    if (tokens1.length === 0 || tokens2.length === 0) return false;
-    const s1 = new Set(tokens1), s2 = new Set(tokens2);
+    // 6. Channel-identity path — at least one title is not a team-vs-team fixture
+    //    (24/7 channels, court/track numbered events, "Team Live" listings).
+    if (p1.tokens.size === 0 || p2.tokens.size === 0) return false;
+
+    // Digit signatures must agree: "beIN 1" vs "beIN 2", "Court 13" vs "Court 7"
+    // are different channels/events even when the words are identical.
+    if (p1.digits !== p2.digits) return false;
+
+    // 6a. One fixture + one channel-like listing: the channel-like tokens must be
+    //     a subset of the fixture tokens ("Real Madrid live" ⊂ "Real Madrid vs
+    //     Barcelona"). This keeps single-team listings merging with the fixture.
+    if (p1.teams || p2.teams) {
+      const channel = p1.teams ? p2 : p1;
+      const fixture = p1.teams ? p1 : p2;
+      for (const w of channel.tokens) if (!fixture.tokens.has(w)) return false;
+      return true;
+    }
+
+    // 6b. Both channel-like: strict identity only. Distinct channels with shared
+    //     branding must never merge.
+    if (p1.norm === p2.norm) return true;
     let common = 0;
-    for (const w of s1) if (s2.has(w)) common++;
-    const minLen = Math.min(s1.size, s2.size);
-    const jaccard = common / Math.max(s1.size + s2.size - common, 1);
-    return (minLen >= 2 && (common / minLen) >= 0.8) || jaccard >= 0.5;
+    for (const w of p1.tokens) if (p2.tokens.has(w)) common++;
+    const union = p1.tokens.size + p2.tokens.size - common;
+    if (union > 0 && common / union >= 0.75) return true;
+    return false;
+  }
+
+  /** Public API preserved: decision on raw matches (computes pre on the fly). */
+  isSameEvent(e1, e2) {
+    return this._sameEventPre(this._precompute(e1), this._precompute(e2));
   }
 
   async syncMatches() {
     console.log('[MatchAggregator] Fetching from all providers...');
     const finalMatches = [];
+    const finalPres = []; // precomputed identity for each accepted match
 
     const processProviderMatches = (providerMatches) => {
       if (!providerMatches || !Array.isArray(providerMatches)) return;
       providerMatches.forEach(match => {
         if (!match.id || !match.title) return;
-        
-        const existing = finalMatches.find(m => this.isSameEvent(m, match));
-        if (!existing) {
+
+        const pre = this._precompute(match);
+        let idx = -1;
+        for (let i = 0; i < finalMatches.length; i++) {
+          if (this._sameEventPre(finalPres[i], pre)) { idx = i; break; }
+        }
+
+        if (idx === -1) {
           finalMatches.push(match);
-        } else {
-          if (match.sources && Array.isArray(match.sources)) {
-            match.sources.forEach(src => {
-              if (!existing.sources.find(s => s.id === src.id && s.source === src.source)) {
-                existing.sources.push(src);
-              }
-            });
-          }
-          if (match.popular === '1') existing.popular = '1';
-          if (!existing.poster && match.poster) existing.poster = match.poster;
-          if (existing.description === 'No description' && match.description && match.description !== 'No description') {
-            existing.description = match.description;
-          }
-          if (!existing.logo && match.logo) existing.logo = match.logo;
+          finalPres.push(pre);
+          return;
+        }
+
+        const existing = finalMatches[idx];
+        if (match.sources && Array.isArray(match.sources)) {
+          match.sources.forEach(src => {
+            if (!existing.sources.find(s => s.id === src.id && s.source === src.source)) {
+              existing.sources.push(src);
+            }
+          });
+        }
+        if (match.popular === '1') existing.popular = '1';
+        if (!existing.poster && match.poster) existing.poster = match.poster;
+        if (existing.description === 'No description' && match.description && match.description !== 'No description') {
+          existing.description = match.description;
+        }
+        if (!existing.logo && match.logo) existing.logo = match.logo;
+
+        // Canonical naming: prefer a team-vs-team fixture title over a
+        // channel-like listing title, so the merged event keeps the most
+        // informative name regardless of which provider arrived first.
+        if (!existing._titleIsFixture && pre.teams) {
+          existing.title = match.title;
+          existing._titleIsFixture = true;
+          finalPres[idx] = pre;
         }
       });
     };
@@ -202,14 +273,14 @@ class MatchAggregator {
         }
       });
     }
-    
+
     const now = Date.now();
     // Smart Trending Engine: Boost popular matches globally, but only if they are actually live or starting soon
     const TRENDING_KEYWORDS = ['bein', 'real madrid', 'barcelona', 'manchester', 'arsenal', 'liverpool', 'chelsea', 'bayern', 'psg', 'lakers', 'warriors', 'mcgregor', 'super bowl', 'champions league', 'el clasico', 'f1', 'formula 1', 'grand prix'];
-    
+
     finalMatches.forEach(match => {
       const titleLower = match.title.toLowerCase();
-      
+
       // Parse kickoff date (default to 0 if none provided, assume live)
       let kickoff = 0;
       if (match.date) {
@@ -219,13 +290,13 @@ class MatchAggregator {
       }
       // Allow matches to be flagged as 'Live' from 3 hours before kickoff up to 14 hours after kickoff
       const isWithinTimeWindow = kickoff === 0 || (now >= kickoff - (3 * 3600 * 1000) && now <= kickoff + (14 * 3600 * 1000));
-      
+
       if (TRENDING_KEYWORDS.some(kw => titleLower.includes(kw))) {
         if (isWithinTimeWindow) {
           match.popular = '1';
         }
       }
-      
+
       // GLOBAL FIX: Some providers (like Streamed.pk) flag future events as popular/live early.
       // We must override and strip the popular flag if the event is too far in the future.
       if (match.popular === '1' && kickoff > 0 && !isWithinTimeWindow) {
@@ -258,3 +329,4 @@ class MatchAggregator {
 }
 
 module.exports = MatchAggregator;
+module.exports._internal = { _compoundify, _stripNoise, _tokenize, _teamsSimilar, _tryExtractTeams };
