@@ -107,6 +107,36 @@ app.get('/api/matches', (req, res) => {
   res.json(matches);
 });
 
+// ─── Self-hosted image pipeline ───────────────────────────────────────
+// /img?url=...          → cached upstream image, or a generated category-colored
+//                         placeholder on any failure (dead URL, non-image body,
+//                         timeout) so the client never sees a broken image.
+// /img/placeholder?...  → generated poster card. Replaces the external
+//                         placehold.co dependency.
+const imageService = require('./services/ImageService');
+
+app.get('/img/placeholder', (req, res) => {
+  const svg = imageService.svgPlaceholder(req.query.text || 'Live Sports', req.query.color || '333333');
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.send(svg);
+});
+
+app.get('/img', async (req, res) => {
+  const text = req.query.text || 'Live Sports';
+  const color = req.query.color || '333333';
+  const entry = await imageService.getImage(req.query.url);
+  if (entry) {
+    res.setHeader('Content-Type', entry.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    return res.send(entry.buffer);
+  }
+  const svg = imageService.svgPlaceholder(text, color);
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.send(svg);
+});
+
 // ─── Manifest proxy: shared client + validated short-TTL cache ──────────────
 // Live HLS players reload /api/manifest every 2-6 s per viewer. A shared Impit
 // client (keep-alive) + a validated short-TTL cache removes the per-viewer TLS

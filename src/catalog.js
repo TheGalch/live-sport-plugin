@@ -1,6 +1,8 @@
 const container = require('./container');
 const { getChannelLogo } = require('./services/ChannelLogoService');
 const { prewarmMatch } = require('./streams');
+const { BASE_URL } = require('./config');
+const imageService = require('./services/ImageService');
 
 /**
  * Accurately determines if an event is currently live right now.
@@ -85,43 +87,7 @@ function mapMatchToMetaPreview(match, config = {}) {
   };
   const color = categoryColors[match.category] || '333333';
   
-  function getChannelLogo(title) {
-    const t = title.toLowerCase();
-    if (t.includes('sky sports cricket')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/8/87/Sky_Sports_Cricket_2020.svg/512px-Sky_Sports_Cricket_2020.svg.png';
-    if (t.includes('sky sports main event')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/1/15/Sky_Sports_Main_Event_2020.svg/512px-Sky_Sports_Main_Event_2020.svg.png';
-    if (t.includes('sky sports premier league')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/d/d4/Sky_Sports_Premier_League_2020.svg/512px-Sky_Sports_Premier_League_2020.svg.png';
-    if (t.includes('sky sports football')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/6/67/Sky_Sports_Football_2020.svg/512px-Sky_Sports_Football_2020.svg.png';
-    if (t.includes('sky sports f1')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/6/60/Sky_Sports_F1_2020.svg/512px-Sky_Sports_F1_2020.svg.png';
-    if (t.includes('sky sports action')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/5/52/Sky_Sports_Action_2020.svg/512px-Sky_Sports_Action_2020.svg.png';
-    if (t.includes('sky sports arena')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/0/00/Sky_Sports_Arena_2020.svg/512px-Sky_Sports_Arena_2020.svg.png';
-    if (t.includes('sky sports golf')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/0/02/Sky_Sports_Golf_2020.svg/512px-Sky_Sports_Golf_2020.svg.png';
-    if (t.includes('sky sports')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Sky_Sports_2020.svg/512px-Sky_Sports_2020.svg.png';
-    if (t.includes('willow')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Willow_TV_logo.svg/512px-Willow_TV_logo.svg.png';
-    if (t.includes('astro cricket')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Astro_Cricket_logo.svg/512px-Astro_Cricket_logo.svg.png';
-    if (t.includes('astro supersport')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/1/14/Astro_SuperSport_logo.svg/512px-Astro_SuperSport_logo.svg.png';
-    if (t.includes('tsn')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/3/30/TSN_Logo_2023.svg/512px-TSN_Logo_2023.svg.png';
-    if (t.includes('sportsnet')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Sportsnet_2023_Logo.svg/512px-Sportsnet_2023_Logo.svg.png';
-    if (t.includes('bein sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/BeIN_SPORTS_2017.svg/512px-BeIN_SPORTS_2017.svg.png';
-    if (t.includes('espn')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/ESPN_wordmark.svg/512px-ESPN_wordmark.svg.png';
-    if (t.includes('fox sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Fox_Sports_logo.svg/512px-Fox_Sports_logo.svg.png';
-    if (t.includes('tnt sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/TNT_Sports_%28United_Kingdom%29_logo.svg/512px-TNT_Sports_%28United_Kingdom%29_logo.svg.png';
-    if (t.includes('bt sport')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/BT_Sport_logo.svg/512px-BT_Sport_logo.svg.png';
-    if (t.includes('eurosport')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Eurosport_logo_2023.svg/512px-Eurosport_logo_2023.svg.png';
-    if (t.includes('star sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Star_Sports_logo.svg/512px-Star_Sports_logo.svg.png';
-    if (t.includes('super sport') || t.includes('supersport')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/SuperSport_logo.svg/512px-SuperSport_logo.svg.png';
-    if (t.includes('ten sports')) return 'https://upload.wikimedia.org/wikipedia/en/thumb/7/77/Ten_Sports_Logo.svg/512px-Ten_Sports_Logo.svg.png';
-    if (t.includes('optus')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Optus_Sport_Logo.svg/512px-Optus_Sport_Logo.svg.png';
-    if (t.includes('nbc sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/NBC_Sports_logo.svg/512px-NBC_Sports_logo.svg.png';
-    if (t.includes('cbs sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/CBS_Sports_2020.svg/512px-CBS_Sports_2020.svg.png';
-    if (t.includes('arena sport')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Arena_Sport_logo.svg/512px-Arena_Sport_logo.svg.png';
-    if (t.includes('digi sport')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Digisport_Romania_logo.svg/512px-Digisport_Romania_logo.svg.png';
-    if (t.includes('eleven sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Eleven_Sports_logo.svg/512px-Eleven_Sports_logo.svg.png';
-    if (t.includes('bally sports')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Bally_Sports_logo.svg/512px-Bally_Sports_logo.svg.png';
-    if (t.includes('mlb network')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/MLB_Network_logo.svg/512px-MLB_Network_logo.svg.png';
-    if (t.includes('nba tv')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/NBA_TV_logo.svg/512px-NBA_TV_logo.svg.png';
-    if (t.includes('nfl network')) return 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/NFL_Network_logo.svg/512px-NFL_Network_logo.svg.png';
-    return null;
-  }
+  // Channel logos come from the unified ChannelLogoService (tv-logos CDN + Wikimedia).
 
   // Generate a clean, readable fallback poster using the match title
   let posterText = match.title;
@@ -135,41 +101,40 @@ function mapMatchToMetaPreview(match, config = {}) {
       posterText = match.category.toUpperCase();
   }
   
-  const fallbackPoster = `https://placehold.co/800x450/111111/${color}.png?text=${encodeURIComponent(posterText)}&font=Montserrat`;
-  
-  // Helper to construct a standardized proxy URL for all images
-  const getProxyUrl = (url, isLogo) => {
-    if (!url) return null;
-    const fit = isLogo ? 'contain' : 'cover';
-    const bg = isLogo ? '&bg=1a1a1a' : '';
-    return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=800&h=450&fit=${fit}${bg}&output=jpeg&q=80`;
-  };
+  // Self-hosted fallback poster (replaces the external placehold.co dependency)
+  const fallbackPoster = imageService.placeholderUrl(BASE_URL, posterText, color);
+
+  // Self-hosted image proxy: serves the upstream image from cache and falls
+  // back to a generated placeholder when the source is dead, so the client
+  // never sees a broken image.
+  const buildImg = (sourceUrl, fbText, c) =>
+    imageService.proxyUrl(BASE_URL, sourceUrl, { text: fbText, color: c });
 
   let poster = fallbackPoster;
   let logo = match.logo || (match.team1 && match.team1.logo ? match.team1.logo : null);
 
   const channelLogo = getChannelLogo(match.title);
   if (match.poster) {
-    poster = getProxyUrl(match.poster, false);
+    poster = buildImg(match.poster, posterText, color) || fallbackPoster;
   } else if (channelLogo) {
-    poster = getProxyUrl(channelLogo, true);
+    poster = buildImg(channelLogo, match.title, '161616') || fallbackPoster;
     logo = channelLogo;
   } else if (match.thumbnail_url) {
     const tUrl = match.thumbnail_url.startsWith('http') ? match.thumbnail_url : `https://streamfree.top${match.thumbnail_url}`;
     const isLogo = match.category === 'networks' || tUrl.toLowerCase().includes('logo') || tUrl.toLowerCase().includes('icon');
     
-    poster = getProxyUrl(tUrl, isLogo);
+    poster = buildImg(tUrl, posterText, color) || fallbackPoster;
     
     if (isLogo) {
       logo = tUrl;
     }
   }
 
-  if (logo && !logo.includes('wsrv.nl')) {
-    logo = getProxyUrl(logo, true);
+  if (logo && !logo.startsWith(BASE_URL)) {
+    logo = buildImg(logo, match.title || 'TV', '161616') || logo;
   }
   
-  let background = match.background ? getProxyUrl(match.background, false) : poster;
+  let background = match.background ? (buildImg(match.background, posterText, color) || poster) : poster;
 
   let timeString = match.category === 'networks' ? '24/7 Stream' : 'Live Now';
   let relativeTimeStr = '';
