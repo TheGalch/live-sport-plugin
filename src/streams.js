@@ -417,7 +417,7 @@ async function handleStream(type, id, config) {
       else if (providerName === 'WatchFooty') referer = 'https://watchfooty.st/';
       else if (providerName === 'CDNLiveTV') referer = 'https://cdnlivetv.tv/';
       else if (providerName === 'Streamic') referer = 'https://streamic.st/';
-      else if (providerName === 'StreamSports99' || providerName === 'StreamSports') referer = 'https://cdnlivetv.is/';
+      else if (providerName === 'StreamSports99' || providerName === 'StreamSports') referer = 'https://streamsports99.fun/';
       else if (providerName === 'SportyHunter') referer = 'https://sportyhunter.xyz/';
       
       if (referer) {
