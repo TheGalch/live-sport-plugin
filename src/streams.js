@@ -161,7 +161,7 @@ async function verifyStreams(streams, cacheKey, m3u8Parser, resolveCache) {
 
     try {
       const abortController = new AbortController();
-      const timeout = setTimeout(() => abortController.abort(), 2000); // 2 second strict timeout
+      const timeout = setTimeout(() => abortController.abort(), 5000); // 5 second timeout to allow slow edge CDNs (wfty/strmd) to respond
 
       if (!referer && s.behaviorHints && s.behaviorHints.proxyHeaders && s.behaviorHints.proxyHeaders.request) {
         referer = s.behaviorHints.proxyHeaders.request.Referer || '';
