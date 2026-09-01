@@ -128,20 +128,19 @@ class StreamFreeProvider extends BaseProvider {
       if (streamKeyData && streamKeyData.is_external && streamKeyData.external_url) {
          baseUrl = streamKeyData.external_url;
       } else {
-         const serverDomain = streamKeyData && streamKeyData.server_domain ? streamKeyData.server_domain : 'https://streamfree.top';
          const serverName = (streamKeyData && streamKeyData.server_name) ? streamKeyData.server_name : 'origin';
          if (serverName !== 'origin') {
-            baseUrl = `${serverDomain}/live-cdn/${sourceId}${bestQuality}/index.m3u8`;
+            baseUrl = `https://streamfree.top/live-cdn/${sourceId}${bestQuality}/index.m3u8`;
          } else {
-            baseUrl = `${serverDomain}/live-origin/${sourceId}${bestQuality}/index.m3u8`;
+            baseUrl = `https://streamfree.top/live-origin/${sourceId}${bestQuality}/index.m3u8`;
          }
       }
       
       const targetUrl = `${baseUrl}?_t=${t._t}&_e=${t._e}&_n=${t._n}`;
 
-      const referer = 'https://streamfree.top/';
+      const referer = embedUrl;
       const { BASE_URL } = require('../config');
-      const proxyUrl = `${BASE_URL}/api/manifest?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(new URL(referer).origin)}`;
+      const proxyUrl = `${BASE_URL}/api/manifest?url=${encodeURIComponent(targetUrl)}&referer=${encodeURIComponent(referer)}&origin=https://streamfree.top`;
 
       return [new StreamEntity({
         name: 'StreamFree',
