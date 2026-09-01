@@ -143,7 +143,7 @@ function mapMatchToMetaPreview(match, config = {}) {
   if (match.date && !isNaN(parseInt(match.date)) && parseInt(match.date) > 0) {
      const dateObj = new Date(parseInt(match.date));
      releasedIso = dateObj.toISOString();
-     const options = { hour: '2-digit', minute: '2-digit' };
+     const options = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }; // 24-hour format (00-23), never AM/PM
      
      if (config && config.timezone) {
        options.timeZone = config.timezone;

@@ -412,8 +412,8 @@ app.use('/api', createProxyMiddleware({
 }));
 
 // ─── Stream URL Rewrite Middleware ──────────────────────────────────────────────
-// The Stremio addon SDK returns stream JSON with relative /watch and /api/hls
-// URLs. We intercept the response and prefix them with the trusted BASE_URL
+// The Stremio addon SDK returns stream JSON with relative /watch URLs. We
+// intercept the response and prefix them with the trusted BASE_URL
 // (set ADDON_URL when self-hosting behind a LAN IP or tunnel).
 app.use((req, res, next) => {
   if (!req.path.includes('/stream/')) return next();
@@ -448,10 +448,6 @@ app.use((req, res, next) => {
           body.streams.forEach(s => {
             if (s.externalUrl && s.externalUrl.startsWith('/watch')) {
               s.externalUrl = `${currentBaseUrl}${s.externalUrl}`;
-              modified = true;
-            }
-            if (s.url && s.url.startsWith('/api/hls')) {
-              s.url = `${currentBaseUrl}${s.url}`;
               modified = true;
             }
           });
@@ -923,11 +919,8 @@ app.get('/watch', (req, res) => {
     const targetUrl = "${safeUrl}";
     const isM3u8 = targetUrl.includes('.m3u8');
     
-    // Auto-proxy m3u8 urls through our local server to completely bypass CORS in the browser!
+    // Video streams play DIRECT from the upstream CDN (no server-side relay).
     let finalUrl = targetUrl;
-    if (isM3u8 && !targetUrl.includes('/api/hls')) {
-      finalUrl = '/api/hls/playlist.m3u8?url=' + encodeURIComponent(targetUrl) + '&referer=' + encodeURIComponent('https://embed.st/') + '&embedOrigin=' + encodeURIComponent('https://embed.st');
-    }
 
     if (isM3u8) {
       iframe.style.display = 'none';

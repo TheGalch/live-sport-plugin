@@ -3,11 +3,11 @@ const { BASE_URL } = require('./config');
 
 // Source selection (shared by handleStream and prewarmMatch)
 function selectSources(matchSources, config) {
-  const SOURCE_PRIORITY = { admin: 1, echo: 1, golf: 1, delta: 1, 'watchfooty': 2, 'cdnlive': 3, 'streamsports99': 4, 'streamic': 5, 'strims24': 7, 'streamfree': 8, 'timstreams': 9, 'sportyhunter': 12, 'streamsports': 13, 'iptv-org': 14, 'embedindia': 15 };
+  const SOURCE_PRIORITY = { admin: 1, echo: 1, golf: 1, delta: 1, 'watchfooty': 2, 'cdnlive': 3, 'streamsports99': 4, 'streamic': 5, 'streamfree': 8, 'timstreams': 9, 'sportyhunter': 12, 'streamsports': 13, 'iptv-org': 14, 'embedindia': 15 };
   const sortedSources = [...matchSources].sort((a, b) => {
     // Unknown sources that are not known fallback providers are likely new
     // Streamed.pk sources - priority 1.5 keeps them near the top.
-    const getPriority = (src) => SOURCE_PRIORITY[src] ?? (['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org'].includes(src) ? 99 : 1.5);
+    const getPriority = (src) => SOURCE_PRIORITY[src] ?? (['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org'].includes(src) ? 99 : 1.5);
     const pa = getPriority(a.source);
     const pb = getPriority(b.source);
     if (pa !== pb) return pa - pb;
@@ -16,7 +16,7 @@ function selectSources(matchSources, config) {
 
   if (config && typeof config.sources === 'string' && config.sources !== 'none') {
     const enabled = config.sources.split(',');
-    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst', 'BeinArabic', 'streamedpk'];
+    const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst', 'streamedpk'];
     return sortedSources.filter(src => {
       if (src.source.startsWith('yaml_')) return true;
       const isFallback = KNOWN_FALLBACKS.includes(src.source);
@@ -27,7 +27,7 @@ function selectSources(matchSources, config) {
     });
   }
 
-  const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst', 'BeinArabic', 'streamedpk'];
+  const KNOWN_FALLBACKS = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst', 'streamedpk'];
   return sortedSources.filter(src => {
     if (src.source.startsWith('yaml_')) return true;
     return KNOWN_FALLBACKS.includes(src.source);
@@ -64,9 +64,6 @@ async function resolveSource(src, match, config) {
     } else if (sourceName === 'streamic') {
       const provider = container.resolve('streamicProvider');
       resStreams = await provider.resolveStream(src.id, match.category, match.title, src);
-    } else if (sourceName === 'strims24') {
-      const provider = container.resolve('strims24Provider');
-      resStreams = await provider.resolveStream(src.id, match.category, match.title);
     } else if (sourceName === 'iptv-org') {
       const proxyHeaders = {};
       if (src.user_agent) proxyHeaders['User-Agent'] = src.user_agent;
@@ -92,9 +89,6 @@ async function resolveSource(src, match, config) {
     } else if (sourceName === 'streamedpk') {
       const provider = container.resolve('streamedPkProvider');
       resStreams = await provider.resolveStream(src.id, match.category, match.title, src);
-    } else if (sourceName === 'BeinArabic') {
-      const provider = container.resolve('beinArabicProvider');
-      resStreams = await provider.resolveStream(src.id, match.category, match.title);
     } else if (sourceName.startsWith('yaml_')) {
       const yamlProviders = container.resolve('yamlProviders');
       const pName = sourceName.replace('yaml_', '');
@@ -354,7 +348,7 @@ async function handleStream(type, id, config) {
     streamfree: 'StreamFree', timstreams: 'TimStreams',
     sportyhunter: 'SportyHunter', streamsports: 'StreamSports',
     'iptv-org': 'Direct IPTV', 'streamsports99': 'StreamSports99',
-    'streamic': 'Streamic', 'strims24': 'Strims24',
+    'streamic': 'Streamic',
     'embedindia': 'EmbedIndia', 'embedst': 'Embed.st', 'streamedpk': 'Streamed.pk'
   };
 
@@ -378,7 +372,6 @@ async function handleStream(type, id, config) {
     else if (s.title && s.title.toLowerCase().includes('cdnlive')) providerName = 'CDNLiveTV';
     else if (s.title && s.title.toLowerCase().includes('streamsports99')) providerName = 'StreamSports99';
     else if (s.title && s.title.toLowerCase().includes('streamic')) providerName = 'Streamic';
-    else if (s.title && s.title.toLowerCase().includes('strims24')) providerName = 'Strims24';
     else if (s.title && s.title.toLowerCase().includes('24/7')) providerName = 'Direct IPTV';
 
     let originalTitle = s.title || '';
@@ -414,7 +407,7 @@ async function handleStream(type, id, config) {
     s.behaviorHints.bingeGroup = `nuvio_sport_${matchId}`;
     
     // If it's a direct m3u8 stream and not routed through our proxy, mark it notWebReady
-    if (s.url && s.url.includes('.m3u8') && !s.url.includes('/api/hls') && !s.url.includes('/api/manifest')) {
+    if (s.url && s.url.includes('.m3u8') && !s.url.includes('/api/manifest')) {
       if (providerName !== 'Direct IPTV') {
         s.behaviorHints.notWebReady = true;
       }

@@ -112,8 +112,8 @@ function _tryExtractTeams(title) {
 // ────────────────────────────────────────────────────────────────────────────
 
 class MatchAggregator {
-  constructor({ streamFreeProvider, timStreamsProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, streamicProvider, strims24Provider, beinArabicProvider, streamedPkProvider, cacheService, yamlProviders }) {
-    this.providers = [streamFreeProvider, timStreamsProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, streamicProvider, strims24Provider, beinArabicProvider, streamedPkProvider, ...(yamlProviders || [])];
+  constructor({ streamFreeProvider, timStreamsProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, streamicProvider, streamedPkProvider, cacheService, yamlProviders }) {
+    this.providers = [streamFreeProvider, timStreamsProvider, iptvOrgProvider, sportyHunterProvider, watchFootyProvider, cdnLiveProvider, streamSports99Provider, streamicProvider, streamedPkProvider, ...(yamlProviders || [])];
     this.cacheService = cacheService;
   }
 
@@ -132,8 +132,7 @@ class MatchAggregator {
       teams: _tryExtractTeams(title),
       tokens: new Set(_tokenize(_compoundify(_stripNoise(title)))),
       norm: _compoundify(_stripNoise(title)).replace(/\s+/g, ' ').trim(),
-      digits: (title.match(/\d+/g) || []).sort().join(','),
-      bein: id.startsWith('bein_ar')
+      digits: (title.match(/\d+/g) || []).sort().join(',')
     };
   }
 
@@ -152,9 +151,7 @@ class MatchAggregator {
     }
     // 2. Exact ID match
     if (p1.id && p2.id && p1.id === p2.id) return true;
-    // 3. BeinArabic isolation — never merge with external events
-    if (p1.bein || p2.bein) return false;
-    // 4. Date window guard — events more than 24h apart are definitely different
+    // 3. Date window guard — events more than 24h apart are definitely different
     if (p1.date && p2.date && Math.abs(p1.date - p2.date) > 86400000) return false;
 
     // 5. Dual-team extraction — if both titles parse as "team1 vs team2", require

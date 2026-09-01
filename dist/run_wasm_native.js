@@ -120,6 +120,9 @@ global.fetch = async (url, opts) => {
     const proxyUrl = targetOrigin + '/fetch';
     
     try {
+      const { Agent } = require('undici');
+      const keepAliveAgent = new Agent({ connect: { timeout: 30000 }, keepAliveTimeout: 15000, keepAliveMaxTimeout: 30000 });
+      
       const fetchOpts = opts || (url.headers ? url : {});
       const reqHeaders = new Headers(fetchOpts.headers || {});
       reqHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
@@ -130,7 +133,8 @@ global.fetch = async (url, opts) => {
       const response = await originalFetch(proxyUrl, {
           method: fetchOpts.method || 'POST',
           headers: reqHeaders,
-          body: reqBody ? Buffer.from(reqBody) : undefined
+          body: reqBody ? Buffer.from(reqBody) : undefined,
+          dispatcher: keepAliveAgent
       });
       
       if (!response.ok) {

@@ -22,8 +22,8 @@ const path = require('path');
 const streamsSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'streams.js'), 'utf8');
 
 // ── Guard: the citation must still be true. Assert the exact array contents. ──
-const configPathArr = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst', 'BeinArabic', 'streamedpk'];
-const defaultPathArr = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst', 'BeinArabic', 'streamedpk'];
+const configPathArr = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedindia', 'embedst', 'streamedpk'];
+const defaultPathArr = ['watchfooty', 'cdnlive', 'streamsports99', 'streamic', 'strims24', 'streamfree', 'timstreams', 'sportyhunter', 'streamsports', 'iptv-org', 'embedst', 'streamedpk'];
 
 // Extract both KNOWN_FALLBACKS arrays from the live source to prove they diverge.
 const arrMatches = [...streamsSrc.matchAll(/const KNOWN_FALLBACKS = \[([^\]]+)\]/g)].map(m =>
