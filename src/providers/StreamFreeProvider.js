@@ -128,15 +128,11 @@ class StreamFreeProvider extends BaseProvider {
       if (streamKeyData && streamKeyData.is_external && streamKeyData.external_url) {
          baseUrl = streamKeyData.external_url;
       } else {
-         // get-stream-key now returns server_domain (e.g. https://cdn1.streamfree.top)
-         const serverDomain = (streamKeyData && streamKeyData.server_domain) || '';
          const serverName = (streamKeyData && streamKeyData.server_name) ? streamKeyData.server_name : 'origin';
-         if (serverDomain) {
-            baseUrl = `${serverDomain.replace(/\/$/, '')}/live-cdn/${sourceId}${bestQuality}/index.m3u8`;
-         } else if (serverName !== 'origin') {
+         if (serverName !== 'origin') {
             baseUrl = `https://streamfree.top/live-cdn/${sourceId}${bestQuality}/index.m3u8`;
          } else {
-            baseUrl = `https://streamfree.top/live/${sourceId}${bestQuality}/index.m3u8`;
+            baseUrl = `https://streamfree.top/live-origin/${sourceId}${bestQuality}/index.m3u8`;
          }
       }
       

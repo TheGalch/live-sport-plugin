@@ -1,0 +1,97 @@
+{
+  "match": {
+    "id": "sf_san-francisco-giants-vs-atlanta-braves",
+    "title": "Atlanta Braves vs San Francisco Giants",
+    "category": "baseball",
+    "date": "1788213900000",
+    "status": "",
+    "popular": "1",
+    "sources": [
+      {
+        "source": "streamfree",
+        "id": "san-francisco-giants-vs-atlanta-braves",
+        "original_category": "baseball"
+      },
+      {
+        "source": "watchfooty",
+        "id": "401878657"
+      },
+      {
+        "source": "streamsports99",
+        "id": "2387997"
+      },
+      {
+        "source": "streamedpk",
+        "id": "atlanta-braves-vs-san-francisco-giants-2387997",
+        "streamSource": "admin",
+        "streamId": "ppv-san-francisco-giants-vs-atlanta-braves"
+      }
+    ],
+    "league": "MLB",
+    "team1": {
+      "name": "San Francisco Giants",
+      "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/sf.png"
+    },
+    "team2": {
+      "name": "Atlanta Braves",
+      "logo": "https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/atl.png"
+    },
+    "thumbnail_url": "/thumbnails/baseball_san-francisco-giants-vs-atlanta-braves_San_Francisco_Giants_vs_Atlant",
+    "poster": "https://api.watchfooty.st/api/v1/poster/7Pip88Cp91XbCzNCqztv3Teq7Q6VkLJYH9uaJZTYc793ZtBaX8MJL1fzVXMQrymf9cYGvkZifadU1XCZAebeePKBWtwMUiQiKggvNzMzGtvmJkAKtNWeMmw14bFwkhKLUeCMUPgxkbssW9CCqYdHH7eFEmFtH1uAri17KKUcjah6yXk6axxFFWRkSGw6yJ1yZSnGfiV3kGpEBVm",
+    "logo": "https://streamed.pk/api/images/proxy/GwZg7AZpYEZgHCAjAJgCzrAThFlBWSUYAUwVmDW2nmAmD32FrWGHXbeAENgBjUgg5sSdTt0z1Rvdqyw8xAkphTAkCEHxAATUiG479mkCYMGIIFDoIUmfVWzBl4ReaNVNaYJ2NEQgA",
+    "background": "",
+    "_titleIsFixture": true
+  },
+  "stats": {
+    "entries": 4,
+    "inFlight": 0,
+    "hits": 3,
+    "misses": 4,
+    "negativeHits": 1,
+    "evictions": 0,
+    "learnedTtls": {
+      "streamfree": 60000,
+      "streamsports99": 240000,
+      "watchfooty": 60000
+    }
+  },
+  "timeMiss": 6573,
+  "timeHit": 1,
+  "streams": [
+    {
+      "title": "📡 StreamSports99 | 📺 MLB | Atlanta Braves\n📺 Quality: HD",
+      "name": "⚡ Direct Stream",
+      "url": "https://cdnlivetv.tv/secure/api/v1/6a288d2881d8192bb76cb612/playlist.m3u8?token=NmEyODhkMjg4MWQ4MTkyYmI3NmNiNjEyOjE3ODgyMjY4ODExMjE6Y2RubGl2ZXR2LnR2OmRjMDM5NDcyMDRhMmVkNjcuZWFlODI3YjgxMTYxM2NkNDkxZDA5ODBiZGZiYmJjNWM3NGMyZWM4YmFhZTAxNDI5OGU4OGZkNTI2MTU5Mzg3MQ"
+    },
+    {
+      "title": "📡 StreamSports99 | 📺 MLB | San Francisco Giants\n📺 Quality: HD",
+      "name": "⚡ Direct Stream",
+      "url": "https://cdnlivetv.tv/secure/api/v1/6a288d2881d8192bb76cb61d/playlist.m3u8?token=NmEyODhkMjg4MWQ4MTkyYmI3NmNiNjFkOjE3ODgyMjY4ODE0OTA6Y2RubGl2ZXR2LnR2OmYyZGI0OWVkN2VlNTAzZmIuOGMxZWI0MjFiNDNhZGVkYTk4MDM2MTExNzlhNmU2NWMwODAzNDA3ZmJlMmRiNzZjYzQxODU0ZWNlZWQzYWYzOQ"
+    },
+    {
+      "title": "📡 Streamed.pk | 📺 English - BravesVision\n📺 Quality: Auto\n👥 15 Viewers",
+      "name": "🌐 Web Stream",
+      "url": "/watch?url=https%3A%2F%2Fembed.st%2Fembed%2Fadmin%2Fppv-san-francisco-giants-vs-atlanta-braves%2F1&title=Atlanta%20Braves%20vs%20San%20Francisco%20Giants%20(English%20-%20BravesVision)%20%7C%20%F0%9F%91%A5%2015%20Viewers"
+    },
+    {
+      "title": "📡 Streamed.pk | 📺 English - BravesVision\n📺 Quality: Auto\n👥 2 Viewers",
+      "name": "🌐 Web Stream",
+      "url": "/watch?url=https%3A%2F%2Fembed.st%2Fembed%2Fadmin%2Fppv-san-francisco-giants-vs-atlanta-braves%2F2&title=Atlanta%20Braves%20vs%20San%20Francisco%20Giants%20(English%20-%20BravesVision)%20%7C%20%F0%9F%91%A5%202%20Viewers"
+    },
+    {
+      "title": "📡 WatchFooty\n📺 Quality: HD",
+      "name": "🌐 Web Stream",
+      "url": "/watch?url=https%3A%2F%2Fsportsembed.su%2Fembed%2F401878657%2Fatlanta-braves-san-francisco-giants%2Fhd%2F1&title=Atlanta%20Braves%20vs%20San%20Francisco%20Giants"
+    },
+    {
+      "title": "📡 WatchFooty\n📺 Quality: FHD",
+      "name": "🌐 Web Stream",
+      "url": "/watch?url=https%3A%2F%2Fsportsembed.su%2Fembed%2F401878657%2Fatlanta-braves-san-francisco-giants%2Fsigma%2F1&title=Atlanta%20Braves%20vs%20San%20Francisco%20Giants"
+    },
+    {
+      "title": "📡 WatchFooty\n📺 Quality: FHD",
+      "name": "🌐 Web Stream",
+      "url": "/watch?url=https%3A%2F%2Fsportsembed.su%2Fembed%2F401878657%2Fatlanta-braves-san-francisco-giants%2Fsigma%2F2&title=Atlanta%20Braves%20vs%20San%20Francisco%20Giants"
+    }
+  ]
+}

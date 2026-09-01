@@ -81,7 +81,12 @@ class BaseProvider {
       url = proxyUrl.toString();
     }
     
-    const { request } = require('undici');
+    const { request, Agent } = require('undici');
+    const defaultDispatcher = new Agent({
+      connect: {
+        rejectUnauthorized: false
+      }
+    });
     
     try {
       const reqOptions = {
@@ -89,7 +94,11 @@ class BaseProvider {
         headers: options.headers || {},
         headersTimeout: 15000,
         bodyTimeout: 15000,
-        maxRedirections: 5 // follow 301/302 (e.g. SportyHunter moved its base URL)
+        dispatcher: defaultDispatcher
+        // NOTE: undici v8 rejects `maxRedirections` on request() ("use the redirect
+        // interceptor"). Passing it made this branch throw on EVERY call, silently
+        // routing all fetches through the Impit fallback. Redirects are followed
+        // by the Impit fallback when the undici path fails.
       };
       
       if (options.body) reqOptions.body = options.body;

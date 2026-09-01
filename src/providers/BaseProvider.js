@@ -81,14 +81,20 @@ class BaseProvider {
       url = proxyUrl.toString();
     }
     
-    const { request } = require('undici');
+    const { request, Agent } = require('undici');
+    const defaultDispatcher = new Agent({
+      connect: {
+        rejectUnauthorized: false
+      }
+    });
     
     try {
       const reqOptions = {
         method: options.method || 'GET',
         headers: options.headers || {},
         headersTimeout: 15000,
-        bodyTimeout: 15000
+        bodyTimeout: 15000,
+        dispatcher: defaultDispatcher
         // NOTE: undici v8 rejects `maxRedirections` on request() ("use the redirect
         // interceptor"). Passing it made this branch throw on EVERY call, silently
         // routing all fetches through the Impit fallback. Redirects are followed

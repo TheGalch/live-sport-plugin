@@ -414,7 +414,7 @@ async function handleStream(type, id, config) {
     s.behaviorHints.bingeGroup = `nuvio_sport_${matchId}`;
     
     // If it's a direct m3u8 stream and not routed through our proxy, mark it notWebReady
-    if (s.url && s.url.includes('.m3u8') && !s.url.includes('/api/hls')) {
+    if (s.url && s.url.includes('.m3u8') && !s.url.includes('/api/hls') && !s.url.includes('/api/manifest')) {
       if (providerName !== 'Direct IPTV') {
         s.behaviorHints.notWebReady = true;
       }

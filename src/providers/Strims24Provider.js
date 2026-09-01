@@ -189,37 +189,90 @@ class Strims24Provider extends BaseProvider {
     return {};
   }
 
+  async pMap(items, fn, concurrency = 25) {
+    const results = [];
+    let index = 0;
+    const workers = Array.from({ length: Math.min(concurrency, items.length || 1) }, async () => {
+      while (index < items.length) {
+        const i = index++;
+        results[i] = await fn(items[i]);
+      }
+    });
+    await Promise.all(workers);
+    return results;
+  }
+
   async getMatches() {
     const matches = [];
     try {
       const date = this.getTodayDate();
-      const userChannels = await this.fetchStrimsChannels();
+      const userChannelsPromise = this.fetchStrimsChannels();
 
-      for (const sport of this.sports) {
+      const sportsDataPromises = this.sports.map(async (sport) => {
         const [flashRaw, backendMatches] = await Promise.all([
           this.fetchFlashscore(sport),
           this.fetchStrimsMatches(sport, date)
         ]);
+        return { sport, flashRaw, backendMatches };
+      });
 
-        const manualFsIds = new Set();
-        const customItems = [];
+      const [userChannels, sportsData] = await Promise.all([
+        userChannelsPromise,
+        Promise.all(sportsDataPromises)
+      ]);
+
+      const haveChannels = Object.keys(userChannels).length > 0;
+      const now = Date.now();
+      const FOUR_HOURS = 4 * 60 * 60 * 1000;
+
+      // Collect all backend match items to check stream availability in parallel
+      const allBackendItems = [];
+      for (const { sport, backendMatches } of sportsData) {
+        for (const it of backendMatches) {
+          if (it && typeof it.match_id === 'string') {
+            allBackendItems.push({ sport, ...it });
+          }
+        }
+      }
+
+      this.matchDetailsCache = new Map();
+
+      // Verify that matches actually have streams available before including them
+      await this.pMap(allBackendItems, async (it) => {
+        try {
+          const res = await this.fetchData.fire(`${this.baseUrl}/api/v1/match/${it.match_id}`);
+          if (res && res.status === 200) {
+            const detail = await res.json();
+            const hasCu = Array.isArray(detail.custom_urls) && detail.custom_urls.some(c => c && c.enabled !== false);
+            const hasCh = Array.isArray(detail.channels) && detail.channels.some(c => c && c.enabled !== false);
+            if (hasCu || hasCh) {
+              this.matchDetailsCache.set(it.match_id, detail);
+            }
+          }
+        } catch (e) {}
+      }, 30);
+
+      for (const { sport, flashRaw, backendMatches } of sportsData) {
+        const validFsIds = new Set();
+        const validCustomItems = [];
+
         for (const it of backendMatches) {
           if (typeof it.match_id !== 'string') continue;
+          // CRITICAL: Skip any match that does not have streams available!
+          if (!this.matchDetailsCache.has(it.match_id)) continue;
+
           if (it.match_id.startsWith('FS:')) {
-            manualFsIds.add(it.match_id.replace(/^FS:/, ''));
+            validFsIds.add(it.match_id.replace(/^FS:/, ''));
           } else {
-            customItems.push(it);
+            validCustomItems.push(it);
           }
         }
 
-        const haveChannels = Object.keys(userChannels).length > 0;
-        const now = Date.now();
-        const FOUR_HOURS = 4 * 60 * 60 * 1000;
         const processedFsIds = new Set();
 
         for (const e of flashRaw) {
           const hasChannelMatch = haveChannels && e.tvChannelIds.some(id => userChannels[id]);
-          const isManual = manualFsIds.has(e.id);
+          const isManual = validFsIds.has(e.id);
           
           if (hasChannelMatch || isManual) {
             processedFsIds.add(e.id);
@@ -242,9 +295,23 @@ class Strims24Provider extends BaseProvider {
           }
         }
 
+        // Fallback for valid FS matches not listed in the 3-day Flashscore feed
+        for (const fsId of validFsIds) {
+          if (!processedFsIds.has(fsId)) {
+            const detail = this.matchDetailsCache.get(`FS:${fsId}`);
+            const title = detail?.name || `Live Event ${fsId}`;
+            matches.push(new MatchEntity({
+              id: `FS:${fsId}`,
+              title: title,
+              category: this.normalizeCategory(sport),
+              date: now.toString(),
+              popular: '0',
+              sources: [{ source: 'strims24', id: `FS:${fsId}`, original_sport: sport }]
+            }));
+          }
+        }
 
-
-        for (const it of customItems) {
+        for (const it of validCustomItems) {
            const kickoff = it.start_ts ? it.start_ts * 1000 : now;
            const isLive = kickoff <= now && kickoff > now - FOUR_HOURS;
            const cleanMatchId = it.match_id ? (it.match_id.startsWith('CUST:') ? it.match_id : `CUST:${it.match_id}`) : `CUST:${Date.now()}`;
@@ -387,8 +454,12 @@ class Strims24Provider extends BaseProvider {
 
       let dbDetail = null;
       if (!isCh) {
+        if (this.matchDetailsCache && this.matchDetailsCache.has(normalizedSourceId)) {
+          dbDetail = this.matchDetailsCache.get(normalizedSourceId);
+        } else {
           const dbDetailRes = await this.fetchData.fire(`${this.baseUrl}/api/v1/match/${normalizedSourceId}`).catch(() => null);
           if (dbDetailRes && dbDetailRes.status === 200) dbDetail = await dbDetailRes.json();
+        }
       }
 
       const [userChannels, viewersMap] = await Promise.all([
