@@ -133,8 +133,7 @@ global.fetch = async (url, opts) => {
       const response = await originalFetch(proxyUrl, {
           method: fetchOpts.method || 'POST',
           headers: reqHeaders,
-          body: reqBody ? Buffer.from(reqBody) : undefined,
-          dispatcher: keepAliveAgent
+          body: reqBody ? Buffer.from(reqBody) : undefined
       });
       
       if (!response.ok) {
