@@ -46,5 +46,9 @@
     "live-sports",
     "sports-streaming"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "glob": "^11.0.0",
+    "inflight": "^1.0.6"
+  }
 }

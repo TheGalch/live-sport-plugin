@@ -84,8 +84,11 @@ async function extractSportsEmbed(embedUrl) {
     exports.ovpc12b4fa4bac(16);
     ctx = exports.ovpc12b4fa4bac(-16);
     
+    const https = require('https');
+    const keepAliveAgent = new https.Agent({ keepAlive: true, keepAliveMsecs: 10000 });
     const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
     const resp = await fetch('https://sportsembed.su/api/get', {
+        agent: keepAliveAgent,
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-protobuf',
