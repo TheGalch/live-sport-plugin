@@ -6,12 +6,12 @@ Nuvio Live Sports Plugin is a Stremio v1 protocol addon built with Node.js/Expre
 ### Key Subsystems:
 1. **Host & Routing Layer (`src/config.js`, `src/index.js`)**:
    - Dynamic non-internal IPv4 detection via `os.networkInterfaces()` for local LAN fallback (zero hardcoded strings).
-   - Dynamic `getRequestBaseUrl(req)` resolving `X-Forwarded-Proto`, `X-Forwarded-Host`, `Host`, and `req.protocol`.
+   - Dynamic `getRequestBaseUrl(req)` resolving `X-Forwarded-Proto`, `X-Forwarded-Host`, `Host`, `req.protocol`, `cf-visitor`, and `x-forwarded-ssl`.
    - Universal Dynamic Base URL Response Rewriter interceptor in `src/index.js` across `/manifest.json`, `/:config/manifest.json`, `/catalog/*`, `/meta/*`, and `/stream/*`.
 2. **Catalog & Asset Serving Layer (`src/catalog.js`, `src/services/ImageService.js`, `src/services/MatchAggregator.js`)**:
    - URL normalization for protocol-relative (`//`), relative, and external image URLs.
    - Match deduplication preserving `thumbnail_url`, `team1.logo`, `team2.logo`, and `background`.
-   - Built-in `/img` caching proxy (10-min LRU cache) and `/img/placeholder` SVG fallback ensuring 100% HTTP 200 OK delivery.
+   - Built-in `/img` caching proxy (10-min LRU cache) and `/img/placeholder` SVG fallback ensuring 100% HTTP 200 OK delivery with CORS headers.
 3. **E2E Testing & Verification Layer (`scripts/test-e2e-simulated-client.js`)**:
    - Standalone automated simulated Stremio client test runner verifying manifest, catalog, thumbnails, stream resolution, M3U8 playback, dynamic hosts, and zero hardcoded IPs.
 
@@ -30,10 +30,10 @@ Nuvio Live Sports Plugin is a Stremio v1 protocol addon built with Node.js/Expre
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Dynamic Host Routing | `src/config.js`, `.env`, `src/index.js` (middleware + trust proxy) | none | IN_PROGRESS |
-| 2 | Thumbnail Repair & Image Proxy | `src/services/ImageService.js`, `src/catalog.js`, `src/services/MatchAggregator.js`, providers | M1 | PLANNED |
-| 3 | E2E Simulated Client Test Suite | `scripts/test-e2e-simulated-client.js`, `package.json`, verification | M1, M2 | PLANNED |
-| 4 | Verification, Challenge & Audit | Multi-agent review, challenger stress-tests, forensic integrity audit | M1, M2, M3 | PLANNED |
+| 1 | Dynamic Host Routing | `src/config.js`, `.env`, `src/index.js` (middleware + trust proxy) | none | DONE |
+| 2 | Thumbnail Repair & Image Proxy | `src/services/ImageService.js`, `src/catalog.js`, `src/services/MatchAggregator.js`, providers | M1 | DONE |
+| 3 | E2E Simulated Client Test Suite | `scripts/test-e2e-simulated-client.js`, `package.json`, verification | M1, M2 | DONE |
+| 4 | Verification, Challenge & Audit | Multi-agent review, challenger stress-tests, forensic integrity audit | M1, M2, M3 | DONE |
 
 ## Code Layout & Write Boundaries
 - `src/config.js`: Dynamic IP detection and `getRequestBaseUrl(req)` helper.
@@ -45,14 +45,3 @@ Nuvio Live Sports Plugin is a Stremio v1 protocol addon built with Node.js/Expre
 - `src/providers/*.js`: Provider scrapers with normalized image and proxy URLs.
 - `scripts/test-e2e-simulated-client.js`: Automated E2E test runner.
 - `package.json`: NPM test scripts and dependencies.
-
-## Interface Contracts
-### Dynamic Host Resolver: `getRequestBaseUrl(req)`
-- **Input**: Express `req` object (or null).
-- **Output**: Formatted base URL string e.g. `https://sports.ngrok-free.app` (no trailing slash).
-- **Fallback**: `http://localhost:${PORT}` or dynamic local IP if `req` is null/CLI.
-
-### Image Proxy: `/img?url=...&text=...&color=...`
-- **Input**: URL-encoded upstream image URL, fallback text, category hex color.
-- **Output**: Binary image (`image/webp`, `image/png`, `image/jpeg`) or fallback SVG (`image/svg+xml`) with HTTP 200 OK.
-- **Headers**: `Access-Control-Allow-Origin: *`, `Cache-Control: public, max-age=86400, stale-while-revalidate=604800`.

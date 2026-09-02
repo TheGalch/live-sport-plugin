@@ -33,9 +33,9 @@
       "logo": "https://a.espncdn.com/i/teamlogos/soccer/500/391.png"
     },
     "thumbnail_url": "/thumbnails/soccer_wrexham-vs-millwall_Wrexham_vs_Millwall",
-    "poster": "https://api.watchfooty.st/api/v1/poster/7HiS4qgkBJw2G5AuT3gSa5s8QucXhAbjmGUdksudTE93rbNH7R7HoSiJiWz5Mn7kbNyY1T6p7CEhQtmFWLqZMLBRgMdrTgrJ6F8yThy7gvSWAE4Z4xv7Q4CW1xUiYhbjrumo2LZ5bzy8ejuqE44E9MpWYiEczfvhLfrcbw8WKgjtUErmf7tFJ",
+    "poster": "https://api.watchfooty.st/api/v1/poster/8HVQXJgb5zxYw8U8UcGkUU6of7wrjLL8QavGQPRwbo4UbyiT7ipNF3hCh9HJJX9JFqk73eZJS1PYzs9qpJpJy5SHL72xvCWdveLBQvgxYkTpuGhfHeFTu4vFMZATajsnVBYSNzXiBeFbAwUrput8HnHRpbd77jrequwbBscC1iexru4gsFHvx",
     "logo": "https://streamed.pk/api/images/proxy/GwZg7AZpYEZgHCAjAJgCzrAThFlBWSUYAUwVmDW2nmAmD32FrWGHXbeAENgBjUgg5sSdTt0z1Rvdqyw8xAkuhBkYIbmCSrgABg2qQiPrhDqQFyyAIUmfFFzBl4ReaIdNaYJ2NEQgA",
-    "background": "https://api.watchfooty.st/api/v1/poster/7HiS4qgkBJw2G5AuT3gSa5s8QucXhAbjmGUdksudTE93rbNH7R7HoSiJiWz5Mn7kbNyY1T6p7CEhQtmFWLqZMLBRgMdrTgrJ6F8yThy7gvSWAE4Z4xv7Q4CW1xUiYhbjrumo2LZ5bzy8ejuqE44E9MpWYiEczfvhLfrcbw8WKgjtUErmf7tFJ",
+    "background": "https://api.watchfooty.st/api/v1/poster/8HVQXJgb5zxYw8U8UcGkUU6of7wrjLL8QavGQPRwbo4UbyiT7ipNF3hCh9HJJX9JFqk73eZJS1PYzs9qpJpJy5SHL72xvCWdveLBQvgxYkTpuGhfHeFTu4vFMZATajsnVBYSNzXiBeFbAwUrput8HnHRpbd77jrequwbBscC1iexru4gsFHvx",
     "_titleIsFixture": true
   },
   "stats": {
@@ -48,96 +48,86 @@
     "learnedTtls": {
       "streamfree": 120000,
       "streamedpk": 240000,
-      "watchfooty": 75000
+      "watchfooty": 60000
     }
   },
-  "timeMiss": 24328,
+  "timeMiss": 21743,
   "timeHit": 1,
   "streams": [
     {
       "title": "⚽ StreamFree\n📺 Quality: 1080p",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Fstreamfree.top%2Flive-cdn%2Fwrexham-vs-millwall1080p%2Findex.m3u8%3F_t%3D_uIb-ombeOUNw5uK3tilQA%26_e%3D1788409265%26_n%3De8209f089b8a06fd&referer=https%3A%2F%2Fstreamfree.top%2Fembed%2Fsoccer%2Fwrexham-vs-millwall&origin=https://streamfree.top"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Fstreamfree.top%2Flive-cdn%2Fwrexham-vs-millwall1080p%2Findex.m3u8%3F_t%3D96_YJORhj5pWs-s40Ud5BA%26_e%3D1788409618%26_n%3D069665a5d51a1ad2&referer=https%3A%2F%2Fstreamfree.top%2Fembed%2Fsoccer%2Fwrexham-vs-millwall&origin=https://streamfree.top"
     },
     {
-      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: 1080p\n👥 587 Viewers",
+      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: 1080p\n👥 552 Viewers",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb6.strmd.st%2Fsecure%2FhliPtLVllIUqoSltIdghnSSwZyanCbXv%2Frtmp%2Fstream%2FuosAjXeTHuT8E6S068qztCGuZBtjUtlj93VsuQHLjMz5n2em4cYP8rKL1O5Wq3CRPLXKlU22DdqP%2F1%2Fplaylist.m3u8&referer=https%3A%2F%2Fembed.st%2F&origin=https%3A%2F%2Fembed.st"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb15.strmd.st%2Fsecure%2FVXsqZUtScfCxtCxdXtqMDRaINYVqswYu%2Frtmp%2Fstream%2FJ-YitF47utB5SbooJindKVmDYaDcM2XaQIIcbFSfWtT1EjlPMyh-pZlsFKa4FxGjlLEDn89fJqay%2F1%2Fplaylist.m3u8&referer=https%3A%2F%2Fembed.st%2F&origin=https%3A%2F%2Fembed.st"
     },
     {
-      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: HD\n👥 27 Viewers",
+      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: HD\n👥 28 Viewers",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb6.strmd.st%2Fsecure%2FlCLLkJZcASwrngZTbCdMKTIhjZhflPOO%2Frtmp%2Fstream%2Foy5y-uFRTjYu1v_YdzOsMiI23Qzc7adq6drBFjNa-Jr6tF6PCjEsvy5wgugzapM_SbRT15Vt2pmJBtA9vg%2F1%2Fplaylist.m3u8&referer=https%3A%2F%2Fembed.st%2F&origin=https%3A%2F%2Fembed.st"
-    },
-    {
-      "title": "⚽ WatchFooty\n📺 Quality: HD",
-      "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb2.wfty.st%2Fsecure%2Fh7Qtlm1Ckh3H6_FkgdctXQ%2Fdeluxe%2Fmillwall-wrexham%2F1%2F401880295%2F1788402070%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb15.strmd.st%2Fsecure%2FLWneoipnyiRmiFwgZXOkbIrBbjGdBGtq%2Frtmp%2Fstream%2Fbqj45DHDtGy5wzK1GaXNje8HPGXv2Ybc17aknPqu_Np3PSBlWPcAdl1reFitCe_fzERjyBJ7bTMo_kluBA%2F1%2Fplaylist.m3u8&referer=https%3A%2F%2Fembed.st%2F&origin=https%3A%2F%2Fembed.st"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb6.wfty.st%2Fsecure%2F-8dP7oClITixGlv5pCoMFQ%2Fpro%2Fmillwall-wrexham%2F1%2F401880295%2F1788402071%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FEwy4RZbyUTqeM_9GEpzsLA%2Fdeluxe%2Fmillwall-wrexham%2F1%2F401880295%2F1788402421%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FlBSSoBJsMSE0ldW7l54olA%2Fpro%2Fmillwall-wrexham%2F2%2F401880295%2F1788402072%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb5.wfty.st%2Fsecure%2FWohwHdaRdAaqVKHh1538Mw%2Fpro%2Fmillwall-wrexham%2F1%2F401880295%2F1788402422%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb4.wfty.st%2Fsecure%2FORWYcVR03h-XciMFptHAJg%2Fpro%2Fmillwall-wrexham%2F3%2F401880295%2F1788402073%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FdVv27A1Egl5Pgvvgrp5nFw%2Fpro%2Fmillwall-wrexham%2F2%2F401880295%2F1788402423%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb2.wfty.st%2Fsecure%2FeIh0RYm_1lpQ2BQTAqQHBQ%2Fpro%2Fmillwall-wrexham%2F4%2F401880295%2F1788402074%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb6.wfty.st%2Fsecure%2FnjUlVvEwYM_vDNumb2wn9g%2Fpro%2Fmillwall-wrexham%2F4%2F401880295%2F1788402424%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb6.wfty.st%2Fsecure%2FQeGVSApSCJYrI40gzPSdDw%2Fpro%2Fmillwall-wrexham%2F5%2F401880295%2F1788402075%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
-    },
-    {
-      "title": "⚽ WatchFooty\n📺 Quality: HD",
-      "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb4.wfty.st%2Fsecure%2FonLG7FRhk1qXuy7S4WtX-w%2Fpro%2Fmillwall-wrexham%2F6%2F401880295%2F1788402076%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FmaBCLk3mhEbKZjCASC-IlA%2Fpro%2Fmillwall-wrexham%2F6%2F401880295%2F1788402426%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: GHD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb4.wfty.st%2Fsecure%2FENOWTRUX5zrnaaVOAm8xOg%2Fsigma%2Fmillwall-wrexham%2F1%2F401880295%2F1788402077%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb2.wfty.st%2Fsecure%2FsBbqyA4GxS8suJaGK6D6GQ%2Fsigma%2Fmillwall-wrexham%2F1%2F401880295%2F1788402427%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: FHD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FKy6QHLxFfXVmYGrOmQA3XQ%2Fsigma%2Fmillwall-wrexham%2F3%2F401880295%2F1788402079%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb5.wfty.st%2Fsecure%2Fj3AmZfEV3KWKfmiLKJqdwA%2Fsigma%2Fmillwall-wrexham%2F3%2F401880295%2F1788402429%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: WHD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb4.wfty.st%2Fsecure%2F41NPnTT1G4A-E2Z7Lamj0g%2Fsigma%2Fmillwall-wrexham%2F5%2F401880295%2F1788402081%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FZDIH_-L3ardv0FSdH8e13w%2Fsigma%2Fmillwall-wrexham%2F5%2F401880295%2F1788402431%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb1.wfty.st%2Fsecure%2Fcjho0WloAhEr2sV_8ZRAKQ%2Fplatinum%2Fmillwall-wrexham%2F1%2F401880295%2F1788402082%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb4.wfty.st%2Fsecure%2Fvc7qlybpXrSCiBhRtpFZww%2Fplatinum%2Fmillwall-wrexham%2F1%2F401880295%2F1788402433%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
       "title": "⚽ WatchFooty\n📺 Quality: HD",
       "name": "⚡ Direct Stream",
-      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb4.wfty.st%2Fsecure%2F0EqolRjNMpWEPDdE_vnCCA%2Fdelta%2Flive_championship_millwall-wrexham-live-streaming-612945792%2F1%2F401880295%2F1788402083%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
+      "url": "http://172.16.0.2:7000/api/manifest?url=https%3A%2F%2Flb3.wfty.st%2Fsecure%2FQ90Q3PFTP4JhmItJzvApJg%2Fdelta%2Flive_championship_millwall-wrexham-live-streaming-612945792%2F1%2F401880295%2F1788402433%2Fplaylist.m3u8&referer=https%3A%2F%2Fsportsembed.su%2F&origin=https%3A%2F%2Fsportsembed.su"
     },
     {
-      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: Auto\n👥 587 Viewers",
+      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: Auto\n👥 552 Viewers",
       "name": "🌐 Web Stream",
-      "url": "/watch?url=https%3A%2F%2Fembed.st%2Fembed%2Fadmin%2Fppv-millwall-vs-wrexham%2F1&title=Millwall%20vs%20Wrexham%20(English%20-%20Sky%20Sports%2B)%20%7C%20%F0%9F%91%A5%20587%20Viewers"
+      "url": "/watch?url=https%3A%2F%2Fembed.st%2Fembed%2Fadmin%2Fppv-millwall-vs-wrexham%2F1&title=Millwall%20vs%20Wrexham%20(English%20-%20Sky%20Sports%2B)%20%7C%20%F0%9F%91%A5%20552%20Viewers"
     },
     {
-      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: Auto\n👥 27 Viewers",
+      "title": "⚽ Streamed.pk | 📺 English - Sky Sports+\n📺 Quality: Auto\n👥 28 Viewers",
       "name": "🌐 Web Stream",
-      "url": "/watch?url=https%3A%2F%2Fembed.st%2Fembed%2Fadmin%2Fppv-millwall-vs-wrexham%2F2&title=Millwall%20vs%20Wrexham%20(English%20-%20Sky%20Sports%2B)%20%7C%20%F0%9F%91%A5%2027%20Viewers"
+      "url": "/watch?url=https%3A%2F%2Fembed.st%2Fembed%2Fadmin%2Fppv-millwall-vs-wrexham%2F2&title=Millwall%20vs%20Wrexham%20(English%20-%20Sky%20Sports%2B)%20%7C%20%F0%9F%91%A5%2028%20Viewers"
     },
     {
       "title": "⚽ Streamed.pk | 📺 Extract\n📺 Quality: Auto",

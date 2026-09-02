@@ -551,7 +551,7 @@ app.get('/:config?/manifest.json', (req, res, next) => {
     const enabledSports = parsedConfig.sports.split(',');
     
     // General catalogs to always keep
-    const keepCatalogs = ['nuvio_sports_live', 'nuvio_sports_networks', 'nuvio_sports_upcoming', 'nuvio_sports_teams'];
+    const keepCatalogs = ['nuvio_sports_live', 'nuvio_sports_upcoming', 'nuvio_sports_teams'];
     
     // Add specific catalogs based on selection
     const sportCatalogs = ['football', 'cricket', 'basketball', 'motorsport', 'hockey', 'baseball', 'mma', 'golf', 'tennis', 'rugby', 'american_football', 'darts'];
