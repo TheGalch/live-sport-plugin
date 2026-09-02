@@ -1,34 +1,25 @@
 FROM node:22-slim
 
-# Install system deps for Playwright Chromium and xvfb for headed browser support
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    xvfb \
-    xauth \
-    && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-# Copy package files and install all dependencies
+# Copy package configs and install dependencies
 COPY package*.json ./
 RUN npm install
 
-# Install only Chromium for Playwright (skip Firefox/WebKit to save ~400MB)
-RUN npx playwright install --with-deps chromium
-
-# Copy the rest of the application code
+# Copy source code and assets
 COPY . .
 
-# Build the bundled output in dist/
+# Install internal resolver dependencies
+RUN cd resolver && npm install
+
+# Build the bundled distribution
 RUN npm run build
 
-# Set default port
+# Configure runtime environment
 ENV PORT=7000
+ENV NODE_ENV=production
 EXPOSE 7000
 
-# Copy the run script
-COPY run.sh ./
-RUN chmod +x run.sh
+# Start server directly with node
+CMD ["node", "dist/index.js"]
 
-# Start the application with xvfb to provide a virtual display for headed Chromium
-CMD ["./run.sh"]

@@ -81,55 +81,58 @@ class BaseProvider {
       url = proxyUrl.toString();
     }
     
-    // Direct fetch as fallback using Axios (forces IPv4 to match manifest proxy IP-locking)
-    const axios = require('axios');
-    const https = require('https');
+    const { request, Agent } = require('undici');
+    const defaultDispatcher = new Agent({
+      connect: {
+        rejectUnauthorized: false
+      }
+    });
     
     try {
-      const axiosOptions = {
+      const reqOptions = {
         method: options.method || 'GET',
         headers: options.headers || {},
-        httpsAgent: new https.Agent({ family: 4 }), // Force IPv4
-        timeout: 10000,
-        validateStatus: () => true // Don't throw on error status codes
+        headersTimeout: 15000,
+        bodyTimeout: 15000,
+        dispatcher: defaultDispatcher
+        // NOTE: undici v8 rejects `maxRedirections` on request() ("use the redirect
+        // interceptor"). Passing it made this branch throw on EVERY call, silently
+        // routing all fetches through the Impit fallback. Redirects are followed
+        // by the Impit fallback when the undici path fails.
       };
       
-      if (options.body) axiosOptions.data = options.body;
+      if (options.body) reqOptions.body = options.body;
       
-      const res = await axios(url, axiosOptions);
+      const res = await request(url, reqOptions);
+      const textData = await res.body.text();
+      
       return {
-        ok: res.status >= 200 && res.status < 300,
-        status: res.status,
-        text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
-        json: async () => typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+        ok: res.statusCode >= 200 && res.statusCode < 300,
+        status: res.statusCode,
+        text: async () => textData,
+        json: async () => JSON.parse(textData)
       };
     } catch (err) {
-      console.error(`[BaseProvider] Axios fetch error: ${err.message}`);
-      throw err;
+      try {
+        const { Impit } = require('impit');
+        const impitClient = new Impit();
+        const res = await impitClient.fetch(url, {
+          method: options.method || 'GET',
+          headers: options.headers || {},
+          body: options.body
+        });
+        const textData = await res.text();
+        return {
+          ok: res.status >= 200 && res.status < 300,
+          status: res.status,
+          text: async () => textData,
+          json: async () => JSON.parse(textData)
+        };
+      } catch (impitErr) {
+        console.error(`[BaseProvider] Fetch error: ${err.message}`);
+        throw err;
+      }
     }
-  }
-
-  /**
-   * Get the proxy URL for a stream
-   */
-  getStreamProxyUrl(streamUrl, referer, origin) {
-    const cfProxyUrl = getCfProxyUrl();
-    if (cfProxyUrl) {
-      const proxyUrl = new URL(cfProxyUrl);
-      proxyUrl.searchParams.set('url', streamUrl);
-      if (referer) proxyUrl.searchParams.set('referer', referer);
-      if (origin) proxyUrl.searchParams.set('origin', origin);
-      // Append .m3u8 to the end of the URL so mobile players recognize it as an HLS stream
-      return proxyUrl.toString() + '&ext=.m3u8';
-    }
-    
-    // Fallback to internal relay
-    let internalProxy = `/api/hls/${encodeURIComponent(streamUrl)}/stream.m3u8`;
-    const q = new URLSearchParams();
-    q.set('url', streamUrl);
-    if (referer) q.set('referer', referer);
-    if (origin) q.set('embedOrigin', origin);
-    return `/api/hls/playlist.m3u8?${q.toString()}`;
   }
 
   /**

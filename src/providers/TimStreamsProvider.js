@@ -95,8 +95,8 @@ class TimStreamsProvider extends BaseProvider {
     const arr = arrMatch[1].split(',').map(Number);
     
     // 2. Find the character decoding loop formula to get the variable names
-    // Typically: String.fromCharCode(((_so7[_ix3]^_bw9)-_jr2+256)%256)
-    const loopMatch = html.match(/String\.fromCharCode\(\(\([\w\[\]]+\s*\^\s*(\w+)\)\s*-\s*(\w+)\s*\+\s*256\)\s*%\s*256\)/);
+    // Typically: String.fromCharCode(((_so7[_ix3]^_bw9)-_jr2+256)%256) or &255
+    const loopMatch = html.match(/String\.fromCharCode\(\(\([\w\[\]]+\s*\^\s*(\w+)\)\s*-\s*(\w+)\s*\+\s*256\)\s*(?:%|&)\s*(?:256|255)\)/);
     if (!loopMatch) return null;
     
     const xorVarName = loopMatch[1];

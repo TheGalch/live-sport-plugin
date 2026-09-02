@@ -12,7 +12,8 @@ class StreamFreeProvider extends BaseProvider {
       this.name + '_fetchMain',
       async () => {
         const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
-        const res = await fetch(this.apiUrl, { headers, signal: AbortSignal.timeout(7000) });
+        // proxyFetch: undici done right (statusCode) + Impit fallback + redirect following
+        const res = await this.proxyFetch(this.apiUrl, { headers });
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return await res.json();
       }
@@ -21,7 +22,8 @@ class StreamFreeProvider extends BaseProvider {
       this.name + '_fetchEmbed',
       async (url) => {
         const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
-        const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+        // NOTE: deliberately no Referer - StreamFree blocks embed requests that carry one
+        const res = await this.proxyFetch(url, { headers });
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return await res.text();
       }
@@ -30,7 +32,7 @@ class StreamFreeProvider extends BaseProvider {
       this.name + '_fetchStreamKey',
       async (url) => {
         const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
-        const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+        const res = await this.proxyFetch(url, { headers });
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return await res.json();
       }
@@ -82,43 +84,39 @@ class StreamFreeProvider extends BaseProvider {
 
       const tokens = JSON.parse(match[1]);
 
-      // Fetch the stream status to find available qualities
+      // Fetch the stream status to find available qualities.
+      // Current API shape: { sources: { "1": { qualities: {...}, available }, ... } }
       const statusUrl = `https://streamfree.top/api/stream-status/${sourceId}`;
-      let availableQualities = {};
+      const availableQualities = {};
       try {
-        const statusRes = await fetch(statusUrl, {
+        const { request } = require('undici');
+        const statusRes = await request(statusUrl, {
            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' }
         });
-        if (statusRes.ok) {
-           const statusData = await statusRes.json();
-           availableQualities = statusData.qualities || {};
-        }
+        if (statusRes.statusCode === 200) {
+           const statusData = await statusRes.body.json();
+           for (const s of Object.values(statusData.sources || {})) {
+             if (s && s.available && s.qualities) {
+               for (const [q, ok] of Object.entries(s.qualities)) {
+                 if (ok) availableQualities[q] = true;
+               }
+             }
+           }
+         }
       } catch (e) {
         console.warn(`[StreamFree] Failed to fetch stream status for ${sourceId}`);
       }
 
-      const prefs = ['1080p', '720p', '540p'];
-      let bestQuality = null;
-      let t = null;
-
-      for (const q of prefs) {
-        if (tokens[q] && availableQualities[q]) {
-          bestQuality = q;
-          t = tokens[q];
-          break;
-        }
-      }
-      
-      // Fallback
-      if (!bestQuality) {
-        for (const q of prefs) {
-          if (tokens[q]) {
-            bestQuality = q;
-            t = tokens[q];
-            break;
-          }
-        }
-      }
+      // Quality selection driven by the token keys actually present (the API
+      // has drifted: 2160p exists now), preferring higher resolution and
+      // intersecting with stream-status availability when known.
+      const resScore = (q) => { const m = String(q).match(/(\d+)/); return m ? parseInt(m[1], 10) : 0; };
+      const tokenKeys = Object.keys(tokens).filter(k => tokens[k] && tokens[k]._t);
+      const bestQuality =
+        tokenKeys.filter(q => availableQualities[q]).sort((a, b) => resScore(b) - resScore(a))[0] ||
+        tokenKeys.sort((a, b) => resScore(b) - resScore(a))[0] ||
+        null;
+      const t = bestQuality ? tokens[bestQuality] : null;
 
       if (!bestQuality || !t) throw new Error("No suitable stream qualities found");
 
@@ -134,7 +132,7 @@ class StreamFreeProvider extends BaseProvider {
          if (serverName !== 'origin') {
             baseUrl = `https://streamfree.top/live-cdn/${sourceId}${bestQuality}/index.m3u8`;
          } else {
-            baseUrl = `https://streamfree.top/live/${sourceId}${bestQuality}/index.m3u8`;
+            baseUrl = `https://streamfree.top/live-origin/${sourceId}${bestQuality}/index.m3u8`;
          }
       }
       

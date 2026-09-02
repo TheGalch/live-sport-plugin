@@ -1,4 +1,4 @@
-const axios = require('axios');
+const { request } = require('undici');
 const cheerio = require('cheerio');
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');

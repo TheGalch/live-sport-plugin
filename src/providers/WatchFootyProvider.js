@@ -7,6 +7,7 @@ class WatchFootyProvider extends BaseProvider {
   constructor(opts) {
     super(opts);
     this.name = 'WatchFooty';
+    this.embedIndiaProvider = opts.embedIndiaProvider;
     // Hitting the /all endpoint to fetch 13+ sports instead of just football
     this.apiUrl = 'https://api.watchfooty.st/api/v1/matches/all';
     
@@ -35,18 +36,25 @@ class WatchFootyProvider extends BaseProvider {
         for (const item of data) {
           const matchId = item.matchId;
           const title = item.title || `${item.teams?.home?.name || 'Home'} vs ${item.teams?.away?.name || 'Away'}`;
+          
+          // CRITICAL: Only include matches that actually have streams available!
+          // WatchFooty returns thousands of livescore-only fixtures with streams: []
+          if (!Array.isArray(item.streams) || item.streams.length === 0) {
+            continue;
+          }
+
           let status = 'upcoming';
           
           if (item.status === 'in' || item.status === 'live') {
             status = 'live';
-          } else if (item.status === 'post' || item.status === 'postponed' || item.status === 'cancelled') {
-            status = 'finished'; // Or upcoming, but we ignore finished usually
+          } else if (item.status === 'post' || item.status === 'post-final' || item.status === 'postponed' || item.status === 'cancelled') {
+            continue; // Skip ended matches
           }
 
           const matchTime = item.timestamp ? parseTimezone(item.timestamp, 'UTC') : Date.now();
           
           // Map dynamic sports directly from the API
-          const category = item.sport ? item.sport.toLowerCase() : 'football';
+          const category = this.normalizeCategory(item.sport);
 
           const posterUrl = item.poster ? (item.poster.startsWith('http') ? item.poster : `https://api.watchfooty.st${item.poster}`) : null;
 
@@ -99,22 +107,68 @@ class WatchFootyProvider extends BaseProvider {
               };
               streams.push(new StreamEntity(entityParams));
             } else if (s.url.includes('sportsembed.su') || s.url.includes('watchfooty.st/embed')) {
+              let resolvedViaIframe = false;
               try {
-                  console.log(`[WatchFootyProvider] Triggering native extraction for: ${s.url}`);
-                  const { extractSportsEmbed } = require('./SportsEmbedExtractor');
-                  const { BASE_URL } = require('../config');
-                  const m3u8Url = await extractSportsEmbed(s.url);
-                  if (m3u8Url) {
-                      console.log(`[WatchFootyProvider] Successfully extracted M3U8: ${m3u8Url}`);
-                      const proxyUrl = `${BASE_URL}/api/manifest?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://sportsembed.su/')}&origin=${encodeURIComponent('https://sportsembed.su')}`;
-                      entityParams.url = proxyUrl;
-                      entityParams.behaviorHints = { notWebReady: true };
-                      streams.push(new StreamEntity(entityParams));
+                const { request } = require('undici');
+                const htmlRes = await request(s.url, {
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'https://watchfooty.st/',
+                    'Accept': 'text/html'
+                  },
+                  timeout: 6000
+                });
+                const html = await htmlRes.body.text();
+                const iframeMatch = html.match(/src="(https?:\/\/[^"]+)"/g);
+                if (iframeMatch) {
+                  for (const attr of iframeMatch) {
+                    const srcMatch = attr.match(/src="(https?:\/\/[^"]+)"/);
+                    if (!srcMatch) continue;
+                    const iframeSrc = srcMatch[1];
+                    try {
+                      const iframeHost = new URL(iframeSrc).hostname;
+                      if (['embedindia.st', 'embedindia.com', 'embedsport.xyz'].includes(iframeHost)) {
+                        console.log(`[WatchFootyProvider] Detected iframe redirect -> ${iframeSrc} for ${matchTitle}. Resolving via iframe provider.`);
+                        const iframeReferer = new URL(iframeSrc).origin + '/';
+                        
+                        if (iframeSrc.includes('embedindia') && this.embedIndiaProvider) {
+                            const indiaStreams = await this.embedIndiaProvider.resolveStream(iframeSrc, matchCategory, matchTitle, { referer: iframeReferer });
+                            if (indiaStreams.length > 0) {
+                                indiaStreams.forEach(s => {
+                                    s.name = 'WatchFooty';
+                                    s.title = s.title.replace('EmbedIndia', 'WatchFooty');
+                                });
+                                streams.push(...indiaStreams);
+                                resolvedViaIframe = true;
+                                break;
+                            }
+                        }
+                      }
+                    } catch (_) {}
                   }
+                }
               } catch (e) {
-                  console.error(`[WatchFootyProvider] Native extract failed for ${s.url}`, e.message);
-                  entityParams.externalUrl = `/watch?url=${encodeURIComponent(s.url)}&title=${encodeURIComponent(matchTitle || 'WatchFooty')}`;
-                  streams.push(new StreamEntity(entityParams));
+                console.warn(`[WatchFootyProvider] Iframe detection failed for ${s.url}: ${e.message}`);
+              }
+
+              if (!resolvedViaIframe) {
+                try {
+                    console.log(`[WatchFootyProvider] Triggering native extraction for: ${s.url}`);
+                    const { extractSportsEmbed } = require('./SportsEmbedExtractor');
+                    const { BASE_URL } = require('../config');
+                    const m3u8Url = await extractSportsEmbed(s.url);
+                    if (m3u8Url) {
+                        console.log(`[WatchFootyProvider] Successfully extracted M3U8: ${m3u8Url}`);
+                        const proxyUrl = `${BASE_URL}/api/manifest?url=${encodeURIComponent(m3u8Url)}&referer=${encodeURIComponent('https://sportsembed.su/')}&origin=${encodeURIComponent('https://sportsembed.su')}`;
+                        entityParams.url = proxyUrl;
+                        entityParams.behaviorHints = { notWebReady: true };
+                        streams.push(new StreamEntity(entityParams));
+                    }
+                } catch (e) {
+                    console.error(`[WatchFootyProvider] Native extract failed for ${s.url}`, e.message);
+                    entityParams.externalUrl = `/watch?url=${encodeURIComponent(s.url)}&title=${encodeURIComponent(matchTitle || 'WatchFooty')}`;
+                    streams.push(new StreamEntity(entityParams));
+                }
               }
             } else {
               entityParams.externalUrl = `/watch?url=${encodeURIComponent(s.url)}&title=${encodeURIComponent(matchTitle || 'WatchFooty')}`;

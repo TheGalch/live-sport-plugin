@@ -8,10 +8,33 @@ class StreamicProvider extends BaseProvider {
     this.name = 'Streamic';
     this.apiUrl = 'https://streamic.st/api/J.php';
     this.fetchData = this.circuitBreaker.wrap(`${this.name}_fetch`, async () => {
-      const headers = { 'User-Agent': 'Mozilla/5.0' };
-      const res = await this.proxyFetch(this.apiUrl, { headers, signal: AbortSignal.timeout(15000) });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return await res.json();
+      const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36' };
+      let lastErr;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const res = await this.proxyFetch(this.apiUrl, { headers });
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          const data = await res.json();
+          // The upstream sometimes answers 200 with an empty/garbage payload
+          // during flap windows - treat that like a transient failure so the
+          // retry below can recover it.
+          if (!Array.isArray(data)) throw new Error('unexpected API payload: ' + (typeof data));
+          console.log(`[Streamic] fetched ${data.length} event(s)`);
+          return data;
+        } catch (err) {
+          lastErr = err;
+          // Transient upstream 5xx (observed as boot-time 503 blips): one short
+          // retry recovers it; otherwise the provider is silent for 4 hours.
+          const transient = /status: 5\d\d/.test(err.message);
+          if (attempt === 1 && transient) {
+            console.warn(`[${this.name}] transient ${err.message} - retrying in 1200ms`);
+            await new Promise(r => setTimeout(r, 1200));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw lastErr;
     });
   }
 

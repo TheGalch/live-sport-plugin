@@ -100,7 +100,9 @@ global.fetch = async (url, opts) => {
   const urlStr = typeof url === 'string' ? url : (url.url || url.href);
   
   if (urlStr.includes('lock.wasm')) {
-    const wasmPath = path.join(process.cwd(), 'lock.wasm');
+    const wasmPath = fs.existsSync(path.join(__dirname, 'lock.wasm')) 
+      ? path.join(__dirname, 'lock.wasm') 
+      : path.join(process.cwd(), 'lock.wasm');
     const wasmBuffer = fs.readFileSync(wasmPath);
     return new Response(wasmBuffer, { status: 200, headers: { 'Content-Type': 'application/wasm' } });
   }
@@ -118,6 +120,9 @@ global.fetch = async (url, opts) => {
     const proxyUrl = targetOrigin + '/fetch';
     
     try {
+      const { Agent } = require('undici');
+      const keepAliveAgent = new Agent({ connect: { timeout: 30000 }, keepAliveTimeout: 15000, keepAliveMaxTimeout: 30000 });
+      
       const fetchOpts = opts || (url.headers ? url : {});
       const reqHeaders = new Headers(fetchOpts.headers || {});
       reqHeaders.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36');
@@ -128,7 +133,8 @@ global.fetch = async (url, opts) => {
       const response = await originalFetch(proxyUrl, {
           method: fetchOpts.method || 'POST',
           headers: reqHeaders,
-          body: reqBody ? Buffer.from(reqBody) : undefined
+          body: reqBody ? Buffer.from(reqBody) : undefined,
+          dispatcher: keepAliveAgent
       });
       
       if (!response.ok) {
@@ -165,7 +171,10 @@ global.fetch = async (url, opts) => {
 
 (async () => {
   try {
-    const lockPath = require('url').pathToFileURL(require('path').join(process.cwd(), 'lock.js')).href;
+    const lockFilePath = fs.existsSync(path.join(__dirname, 'lock.js'))
+      ? path.join(__dirname, 'lock.js')
+      : path.join(process.cwd(), 'lock.js');
+    const lockPath = require('url').pathToFileURL(lockFilePath).href;
     const lock = await import(lockPath);
     await lock.default();
     try {

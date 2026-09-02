@@ -1,4 +1,4 @@
-const axios = require('axios');
+const { request } = require('undici');
 const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
 const { parseTimezone } = require('../timezone');
@@ -47,6 +47,10 @@ class TimStreamsProvider extends BaseProvider {
           const parsed = parseTimezone(s.time, 'America/New_York');
           if (parsed) dateMs = parsed;
         }
+        
+        const now = Date.now();
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+        const isLive = dateMs <= now && dateMs > now - FOUR_HOURS;
 
         const sources = (s.streams || [])
           .filter(st => !st.vip)
@@ -69,7 +73,7 @@ class TimStreamsProvider extends BaseProvider {
             title: title,
             category: category,
             date: dateMs.toString(),
-            popular: s.featured ? '1' : '0',
+            popular: (isLive || s.featured) ? '1' : '0',
             sources: sources,
             thumbnail_url: s.logo || ''
           }));
@@ -91,8 +95,8 @@ class TimStreamsProvider extends BaseProvider {
     const arr = arrMatch[1].split(',').map(Number);
     
     // 2. Find the character decoding loop formula to get the variable names
-    // Typically: String.fromCharCode(((_so7[_ix3]^_bw9)-_jr2+256)%256)
-    const loopMatch = html.match(/String\.fromCharCode\(\(\([\w\[\]]+\s*\^\s*(\w+)\)\s*-\s*(\w+)\s*\+\s*256\)\s*%\s*256\)/);
+    // Typically: String.fromCharCode(((_so7[_ix3]^_bw9)-_jr2+256)%256) or &255
+    const loopMatch = html.match(/String\.fromCharCode\(\(\([\w\[\]]+\s*\^\s*(\w+)\)\s*-\s*(\w+)\s*\+\s*256\)\s*(?:%|&)\s*(?:256|255)\)/);
     if (!loopMatch) return null;
     
     const xorVarName = loopMatch[1];

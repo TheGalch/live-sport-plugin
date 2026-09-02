@@ -3,6 +3,11 @@ const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
 const { parseTimezone } = require('../timezone');
 
+// Kickoff window: the upstream API lists fixtures days ahead; most never get
+// channels and resolve to nothing. Keep live/recent events + 48 h lookahead only.
+const WINDOW_PAST_MS = 6 * 60 * 60 * 1000;   // started up to 6 h ago
+const WINDOW_FUTURE_MS = 48 * 60 * 60 * 1000; // or starting within 48 h
+
 class StreamSports99Provider extends BaseProvider {
   constructor(opts) {
     super(opts);
@@ -70,6 +75,15 @@ class StreamSports99Provider extends BaseProvider {
 
             const matchTime = item.start ? new Date(item.start).getTime() : Date.now();
 
+            // Drop far-out fixtures: they never get channels and resolve to nothing.
+            // Live-flagged events are always kept (clock-skew tolerant).
+            if (item.start && Number.isFinite(matchTime)) {
+              const isLive = status === 'live';
+              if (!isLive && (matchTime < Date.now() - WINDOW_PAST_MS || matchTime > Date.now() + WINDOW_FUTURE_MS)) {
+                continue;
+              }
+            }
+
             matches.push(new MatchEntity({
               id: `ss99_${matchId}`,
               title: title,
@@ -126,8 +140,11 @@ class StreamSports99Provider extends BaseProvider {
           if (ch.url) {
 
             // --- INTERNAL FALLBACK ---
+            console.log("[DEBUG SS99] ENTERING EXTRACTION TRY BLOCK FOR", ch.url);
             try {
-              const playerRes = await fetch(ch.url, {
+              const { request } = require('undici');
+              const playerRes = await request(ch.url, {
+                headersTimeout: 15000, bodyTimeout: 15000,
                 headers: {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                   'Referer': 'https://streamsports99.fun/'
@@ -135,14 +152,17 @@ class StreamSports99Provider extends BaseProvider {
                 signal: AbortSignal.timeout(10000)
               });
               
-              if (playerRes.ok) {
-                const html = await playerRes.text();
+              console.log(`[DEBUG SS99] playerRes.ok: ${playerRes.ok}, status: ${playerRes.statusCode}`);
+              
+              if (playerRes.ok || playerRes.statusCode === 200) {
+                const html = await playerRes.body.text();
                 const decoderMatch = html.match(/function\s+([a-zA-Z0-9_]+)\s*\([a-zA-Z0-9_]+\)\s*\{.+?atob/);
+                console.log(`[DEBUG SS99] HTML length: ${html.length}, decoderMatch: ${!!decoderMatch}`);
                 if (decoderMatch) {
                   const decoderName = decoderMatch[1];
                   const concatRegex = new RegExp(`var\\s+([a-zA-Z0-9_]+)\\s*=\\s*${decoderName}\\([^;]+;`);
                   const concatMatch = html.match(concatRegex);
-                  
+                  console.log(`[DEBUG SS99] decoderName: ${decoderName}, concatMatch: ${!!concatMatch}`);
                   if (concatMatch) {
                     const varRegex = new RegExp(`${decoderName}\\(([a-zA-Z0-9_]+)\\)`, 'g');
                     let match;
@@ -160,6 +180,7 @@ class StreamSports99Provider extends BaseProvider {
                         try { m3u8Url += Buffer.from(b64, 'base64').toString('utf8'); } catch(e) {}
                       }
                     }
+                    console.log(`[DEBUG SS99] vars: ${vars.length}, m3u8Url length: ${m3u8Url.length}`);
                     
                     if (m3u8Url) {
                       streams.push(new StreamEntity({

@@ -1,2 +1,0 @@
-__wbindgen_init_externref_table ()
-CRASH HERE: __wbg_new_b5d9e2fb389fef91 (1048572, 1080192)

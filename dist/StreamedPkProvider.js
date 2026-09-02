@@ -22,6 +22,18 @@ class StreamedPkProvider extends BaseProvider {
       return await res.json();
     });
 
+    this.fetchLiveMatches = this.circuitBreaker.wrap(`${this.name}_fetchLiveMatches`, async () => {
+      const res = await this.proxyFetch(`${this.apiUrl}/matches/live`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+          'Accept': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return await res.json();
+    });
+
     this.fetchStreams = this.circuitBreaker.wrap(`${this.name}_fetchStreams`, async (source, id) => {
       const url = `${this.apiUrl}/stream/${encodeURIComponent(source)}/${encodeURIComponent(id)}`;
       const res = await this.proxyFetch(url, {
@@ -39,10 +51,46 @@ class StreamedPkProvider extends BaseProvider {
   async getMatches() {
     const matches = [];
     try {
-      const data = await this.fetchMatches.fire();
-      if (Array.isArray(data)) {
-        for (const item of data) {
+      const [allData, liveData] = await Promise.all([
+        this.fetchMatches.fire().catch(() => []),
+        this.fetchLiveMatches.fire().catch(() => [])
+      ]);
+
+      // Verify which live matches actually have active stream URLs
+      const liveVerifiedIds = new Set();
+      const liveVerifiedSourceIds = new Set();
+      if (Array.isArray(liveData) && liveData.length > 0) {
+        await Promise.all(
+          liveData.map(async (m) => {
+            const src = (m.sources && m.sources[0]) || { source: 'admin', id: m.id };
+            try {
+              const streams = await this.fetchStreams.fire(src.source || 'admin', src.id || m.id);
+              if (Array.isArray(streams) && streams.length > 0) {
+                liveVerifiedIds.add(m.id);
+                (m.sources || []).forEach(s => liveVerifiedSourceIds.add(s.id));
+              }
+            } catch (e) {
+              // Stream endpoint error or empty
+            }
+          })
+        );
+      }
+
+      if (Array.isArray(allData)) {
+        const now = Date.now();
+        for (const item of allData) {
           if (!item.id || !item.title) continue;
+
+          const is247Channel = !item.date || Number(item.date) <= 0;
+          const isGenuinelyLive = is247Channel || liveVerifiedIds.has(item.id) || (item.sources || []).some(s => liveVerifiedSourceIds.has(s.id));
+          const isUpcoming = !is247Channel && item.date && Number(item.date) > now;
+
+          // If it is not a 24/7 channel, not actively live, and not upcoming, it is finished! Skip it.
+          if (!is247Channel && !isGenuinelyLive && !isUpcoming) {
+            continue;
+          }
+
+          const status = is247Channel ? '' : (isGenuinelyLive ? 'live' : 'upcoming');
 
           // Map sources
           const sources = (item.sources || []).map(s => ({
@@ -62,10 +110,10 @@ class StreamedPkProvider extends BaseProvider {
           matches.push(new MatchEntity({
             id: `spk_${item.id}`,
             title: item.title,
-            category: this.normalizeCategory(item.category),
-            status: item.date && item.date < Date.now() ? 'live' : 'upcoming',
-            date: String(item.date || Date.now()),
-            popular: item.popular ? '1' : '0',
+            category: is247Channel && (item.id.includes('channel') || item.id.includes('network') || item.id.includes('tv') || Number(item.date) <= 0) ? (item.category === 'cricket' ? 'cricket' : (item.category === 'tennis' ? 'tennis' : (item.category === 'rugby' ? 'rugby' : this.normalizeCategory(item.category)))) : this.normalizeCategory(item.category),
+            status: status,
+            date: is247Channel ? '' : String(item.date || Date.now()),
+            popular: is247Channel ? '1' : (item.popular ? '1' : '0'),
             poster: item.poster ? (item.poster.startsWith('http') ? item.poster : `https://streamed.pk${item.poster}`) : '',
             logo: item.teams && item.teams.home && item.teams.home.badge ? `https://streamed.pk/api/images/proxy/${item.teams.home.badge}` : '',
             background: item.poster ? (item.poster.startsWith('http') ? item.poster : `https://streamed.pk${item.poster}`) : '',
