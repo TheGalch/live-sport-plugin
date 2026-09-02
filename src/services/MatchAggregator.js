@@ -227,10 +227,17 @@ class MatchAggregator {
         }
         if (match.popular === '1') existing.popular = '1';
         if (!existing.poster && match.poster) existing.poster = match.poster;
+        if (!existing.logo && match.logo) existing.logo = match.logo;
+        if (!existing.thumbnail_url && match.thumbnail_url) existing.thumbnail_url = match.thumbnail_url;
+        if (!existing.background && match.background) existing.background = match.background;
+        if (!existing.league && match.league) existing.league = match.league;
+        if (!existing.team1 && match.team1) existing.team1 = match.team1;
+        else if (existing.team1 && !existing.team1.logo && match.team1 && match.team1.logo) existing.team1.logo = match.team1.logo;
+        if (!existing.team2 && match.team2) existing.team2 = match.team2;
+        else if (existing.team2 && !existing.team2.logo && match.team2 && match.team2.logo) existing.team2.logo = match.team2.logo;
         if (existing.description === 'No description' && match.description && match.description !== 'No description') {
           existing.description = match.description;
         }
-        if (!existing.logo && match.logo) existing.logo = match.logo;
 
         // Canonical naming: prefer a team-vs-team fixture title over a
         // channel-like listing title, so the merged event keeps the most

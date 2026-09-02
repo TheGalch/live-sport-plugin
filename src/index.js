@@ -22,7 +22,7 @@ const path = require('path');
 const { builder } = require('./manifest');
 const { handleCatalog, handleMeta } = require('./catalog');
 const { handleStream } = require('./streams');
-const { PORT, BASE_URL } = require('./config');
+const { PORT, BASE_URL, getRequestBaseUrl } = require('./config');
 const container = require('./container');
 
 
@@ -89,6 +89,7 @@ builder.defineStreamHandler(({ type, id, config })         => handleStream(type,
 
 const app = express();
 
+app.set('trust proxy', true);
 app.use(cors());
 
 // Serve the web debugger UI and Configuration Page
@@ -118,22 +119,27 @@ const imageService = require('./services/ImageService');
 app.get('/img/placeholder', (req, res) => {
   const svg = imageService.svgPlaceholder(req.query.text || 'Live Sports', req.query.color || '333333');
   res.setHeader('Content-Type', 'image/svg+xml');
-  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
   res.send(svg);
 });
 
 app.get('/img', async (req, res) => {
   const text = req.query.text || 'Live Sports';
   const color = req.query.color || '333333';
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
   const entry = await imageService.getImage(req.query.url);
   if (entry) {
     res.setHeader('Content-Type', entry.contentType);
-    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
     return res.send(entry.buffer);
   }
   const svg = imageService.svgPlaceholder(text, color);
   res.setHeader('Content-Type', 'image/svg+xml');
-  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.setHeader('Cache-Control', 'public, max-age=300');
   res.send(svg);
 });
 
@@ -411,16 +417,23 @@ app.use('/api', createProxyMiddleware({
   }
 }));
 
-// ─── Stream URL Rewrite Middleware ──────────────────────────────────────────────
-// The Stremio addon SDK returns stream JSON with relative /watch URLs. We
-// intercept the response and prefix them with the trusted BASE_URL
-// (set ADDON_URL when self-hosting behind a LAN IP or tunnel).
+// ─── Universal Dynamic Base URL Response Rewriter ─────────────────────────────
+// Intercepts /manifest.json, /catalog/*, /meta/*, and /stream/* responses to
+// dynamically rewrite all internal proxy URLs (/img, /watch, /api/manifest)
+// to match the client's incoming Host and Protocol.
 app.use((req, res, next) => {
-  if (!req.path.includes('/stream/')) return next();
+  const isAddonRoute = req.path === '/manifest.json' || 
+                       req.path.endsWith('/manifest.json') ||
+                       req.path.includes('/catalog/') || 
+                       req.path.includes('/meta/') || 
+                       req.path.includes('/stream/');
   
+  if (!isAddonRoute) return next();
+
+  const currentBaseUrl = getRequestBaseUrl(req);
   const originalWrite = res.write;
   const originalEnd = res.end;
-  let chunks = [];
+  const chunks = [];
 
   res.write = function (chunk) {
     if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -432,42 +445,72 @@ app.use((req, res, next) => {
     if (chunks.length > 0) {
       const bodyBuffer = Buffer.concat(chunks);
       const bodyString = bodyBuffer.toString('utf8');
-      
+
       try {
         const body = JSON.parse(bodyString);
-        if (body && Array.isArray(body.streams)) {
-          let modified = false;
-          let proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-          if (proto.includes(',')) proto = proto.split(',')[0].trim();
-          
-          let host = req.headers['x-forwarded-host'] || req.headers.host;
-          if (host && host.includes(',')) host = host.split(',')[0].trim();
-          
-          const currentBaseUrl = host ? `${proto}://${host}` : BASE_URL;
+        let modified = false;
 
-          body.streams.forEach(s => {
-            if (s.externalUrl && s.externalUrl.startsWith('/watch')) {
-              s.externalUrl = `${currentBaseUrl}${s.externalUrl}`;
-              modified = true;
-            }
-          });
-          
-          if (modified) {
-            const newBodyString = JSON.stringify(body);
-            const newBuffer = Buffer.from(newBodyString, 'utf8');
-            res.setHeader('Content-Length', newBuffer.length);
-            return originalEnd.call(res, newBuffer, 'utf8', callback);
+        const rewriteUrl = (url) => {
+          if (!url || typeof url !== 'string') return url;
+          // Relative URLs
+          if (url.startsWith('/img') || url.startsWith('/watch') || url.startsWith('/api/manifest')) {
+            modified = true;
+            return `${currentBaseUrl}${url}`;
           }
+          // Absolute URLs with legacy/static base or localhost/LAN IP
+          const match = url.match(/^(?:https?:\/\/[^\/]+)(\/(?:img|watch|api\/manifest)(?:[?\/].*)?)$/);
+          if (match) {
+            modified = true;
+            return `${currentBaseUrl}${match[1]}`;
+          }
+          return url;
+        };
+
+        // 1. Streams payload (/stream/tv/*.json)
+        if (body && Array.isArray(body.streams)) {
+          body.streams.forEach(s => {
+            if (s.url) s.url = rewriteUrl(s.url);
+            if (s.externalUrl) s.externalUrl = rewriteUrl(s.externalUrl);
+          });
         }
-      } catch (e) {
-        console.error('[Proxy Error]', e.message);
+
+        // 2. Catalog payload (/catalog/tv/*.json)
+        if (body && Array.isArray(body.metas)) {
+          body.metas.forEach(meta => {
+            if (meta.poster) meta.poster = rewriteUrl(meta.poster);
+            if (meta.background) meta.background = rewriteUrl(meta.background);
+            if (meta.logo) meta.logo = rewriteUrl(meta.logo);
+          });
+        }
+
+        // 3. Meta detail payload (/meta/tv/*.json)
+        if (body && body.meta) {
+          if (body.meta.poster) body.meta.poster = rewriteUrl(body.meta.poster);
+          if (body.meta.background) body.meta.background = rewriteUrl(body.meta.background);
+          if (body.meta.logo) body.meta.logo = rewriteUrl(body.meta.logo);
+        }
+
+        // 4. Manifest payload (/manifest.json)
+        if (body && (body.logo || body.background)) {
+          if (body.logo) body.logo = rewriteUrl(body.logo);
+          if (body.background) body.background = rewriteUrl(body.background);
+        }
+
+        if (modified) {
+          const newBodyString = JSON.stringify(body);
+          const newBuffer = Buffer.from(newBodyString, 'utf8');
+          res.setHeader('Content-Length', newBuffer.length);
+          return originalEnd.call(res, newBuffer, 'utf8', callback);
+        }
+      } catch (_) {
+        // Not JSON or parse failure; fall through
       }
     }
-    
+
     const finalBuffer = Buffer.concat(chunks);
     originalEnd.call(res, finalBuffer, encoding, callback);
   };
-  
+
   next();
 });
 

@@ -107,6 +107,15 @@ class StreamedPkProvider extends BaseProvider {
             });
           }
 
+          const posterUrl = item.poster ? (
+            item.poster.startsWith('//') ? `https:${item.poster}` :
+            item.poster.startsWith('http') ? item.poster :
+            item.poster.startsWith('/') ? `https://streamed.pk${item.poster}` :
+            `https://streamed.pk/${item.poster}`
+          ) : '';
+          const homeBadge = item.teams && item.teams.home && item.teams.home.badge ? `https://streamed.pk/api/images/proxy/${item.teams.home.badge}` : '';
+          const awayBadge = item.teams && item.teams.away && item.teams.away.badge ? `https://streamed.pk/api/images/proxy/${item.teams.away.badge}` : '';
+
           matches.push(new MatchEntity({
             id: `spk_${item.id}`,
             title: item.title,
@@ -114,11 +123,11 @@ class StreamedPkProvider extends BaseProvider {
             status: status,
             date: is247Channel ? '' : String(item.date || Date.now()),
             popular: is247Channel ? '1' : (item.popular ? '1' : '0'),
-            poster: item.poster ? (item.poster.startsWith('http') ? item.poster : `https://streamed.pk${item.poster}`) : '',
-            logo: item.teams && item.teams.home && item.teams.home.badge ? `https://streamed.pk/api/images/proxy/${item.teams.home.badge}` : '',
-            background: item.poster ? (item.poster.startsWith('http') ? item.poster : `https://streamed.pk${item.poster}`) : '',
-            team1: item.teams && item.teams.home ? { name: item.teams.home.name } : null,
-            team2: item.teams && item.teams.away ? { name: item.teams.away.name } : null,
+            poster: posterUrl,
+            logo: homeBadge,
+            background: posterUrl,
+            team1: item.teams && item.teams.home ? { name: item.teams.home.name, logo: homeBadge || null } : null,
+            team2: item.teams && item.teams.away ? { name: item.teams.away.name, logo: awayBadge || null } : null,
             sources: sources
           }));
         }
