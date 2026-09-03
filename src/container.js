@@ -8,7 +8,7 @@ const MatchAggregator = require('./services/MatchAggregator');
 const StreamScoringService = require('./services/StreamScoringService');
 const StreamFreeProvider = require('./providers/StreamFreeProvider');
 const TimStreamsProvider = require('./providers/TimStreamsProvider');
-const IptvOrgProvider = require('./providers/IptvOrgProvider');
+// const IptvOrgProvider = require('./providers/IptvOrgProvider'); // disabled: 24/7 channels removed
 const SportyHunterProvider = require('./providers/SportyHunterProvider');
 
 const WatchFootyProvider = require('./providers/WatchFootyProvider');
@@ -45,7 +45,7 @@ const yamlProviders = yamlBuilder.buildProviders(container, container.resolve('c
 container.register({
   streamFreeProvider: asClass(StreamFreeProvider).singleton(),
   timStreamsProvider: asClass(TimStreamsProvider).singleton(),
-  iptvOrgProvider: asClass(IptvOrgProvider).singleton(),
+  // iptvOrgProvider: asClass(IptvOrgProvider).singleton(), // disabled: 24/7 channels removed
   sportyHunterProvider: asClass(SportyHunterProvider).singleton(),
 
   watchFootyProvider: asClass(WatchFootyProvider).singleton(),

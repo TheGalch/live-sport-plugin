@@ -4,8 +4,6 @@ const BaseProvider = require('./BaseProvider');
 const MatchEntity = require('../domain/MatchEntity');
 const StreamEntity = require('../domain/StreamEntity');
 
-const { BASE_URL } = require('../config');
-
 class SportyHunterProvider extends BaseProvider {
   constructor({ circuitBreaker }) {
     super({ circuitBreaker });

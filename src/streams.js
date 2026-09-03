@@ -1,5 +1,4 @@
 const container = require('./container');
-const { BASE_URL } = require('./config');
 
 // Source selection (shared by handleStream and prewarmMatch)
 function selectSources(matchSources, config) {
