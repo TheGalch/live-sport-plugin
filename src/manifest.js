@@ -46,15 +46,8 @@ const manifest = {
     { 
       key: 'timezone', 
       title: 'Timezone', 
-      type: 'select',
-      default: 'UTC',
-      options: [
-        'UTC',
-        'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-        'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow',
-        'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Tokyo',
-        'Australia/Sydney', 'Pacific/Auckland'
-      ]
+      type: 'text',
+      default: 'UTC'
     }
   ],
 

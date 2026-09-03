@@ -383,15 +383,13 @@ app.get('/api/proxy-embed', async (req, res) => {
     };
     if (referer) headers['Referer'] = referer;
 
-    const { request } = require('undici');
-    const upstream = await request(parsed.toString(), {
+    const upstream = await fetch(parsed.toString(), {
       headers,
-      headersTimeout: 12000,
-      bodyTimeout: 12000,
-      maxRedirections: 5
+      signal: AbortSignal.timeout(12000),
+      redirect: 'follow'
     });
 
-    const html = await upstream.body.text();
+    const html = await upstream.text();
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');

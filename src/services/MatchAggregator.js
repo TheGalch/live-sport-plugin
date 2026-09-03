@@ -327,8 +327,9 @@ class MatchAggregator {
     console.log(`[MatchAggregator] Sync complete. Merged ${activeMatches.length} active events.`);
     if (anyProviderSucceeded) {
       this.cacheService.setMatches(activeMatches);
+      return activeMatches;
     }
-    return activeMatches;
+    return null;
   }
 }
 
