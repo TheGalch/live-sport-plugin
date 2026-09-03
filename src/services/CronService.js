@@ -17,7 +17,9 @@ class CronService {
     this.syncing = true;
     try {
       const activeMatches = await this.matchAggregator.syncMatches();
-      this.pruneStreamCache(activeMatches);
+      if (activeMatches !== null) {
+        this.pruneStreamCache(activeMatches);
+      }
     } finally {
       this.syncing = false;
     }

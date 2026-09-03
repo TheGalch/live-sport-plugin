@@ -284,18 +284,14 @@
     <div class="section">
       <h3>Streaming Sources</h3>
       <div class="sports-grid" id="sourcesGrid">
-        <label class="checkbox-label active"><input type="checkbox" value="streamfree" checked> 🌐 StreamFree (Recommended) (Web Browser Source)</label>
-        <label class="checkbox-label active"><input type="checkbox" value="timstreams" checked> 📺 TimStreams (Recommended)</label>
-        <label class="checkbox-label active"><input type="checkbox" value="bintv" checked> 📺 BinTV (Recommended)</label>
-        <label class="checkbox-label active"><input type="checkbox" value="ntv" checked> 📺 NTV</label>
-        <label class="checkbox-label active"><input type="checkbox" value="iptv-org" checked> 📡 IPTV Org (Direct IPTV)</label>
+        <label class="checkbox-label active"><input type="checkbox" value="streamfree" checked> 🌐 StreamFree</label>
+        <label class="checkbox-label active"><input type="checkbox" value="timstreams" checked> 📺 TimStreams</label>
+        <label class="checkbox-label active"><input type="checkbox" value="streamedpk" checked> 📺 Streamed.pk</label>
         <label class="checkbox-label active"><input type="checkbox" value="sportyhunter" checked> 📺 SportyHunter</label>
-        <label class="checkbox-label active"><input type="checkbox" value="streamsports" checked> 📺 StreamSports</label>
         <label class="checkbox-label active"><input type="checkbox" value="watchfooty" checked> 📺 WatchFooty</label>
         <label class="checkbox-label active"><input type="checkbox" value="cdnlive" checked> 📺 CDNLiveTV</label>
         <label class="checkbox-label active"><input type="checkbox" value="streamsports99" checked> 📺 StreamSports99</label>
-        <label class="checkbox-label active"><input type="checkbox" value="ppvdomains" checked> 🌐 PPV Domains (Web Browser Source)</label>
-        <label class="checkbox-label active"><input type="checkbox" value="streamic" checked> 🌐 Streamic (Web Browser Source)</label>
+        <label class="checkbox-label active"><input type="checkbox" value="streamic" checked> 🌐 Streamic</label>
       </div>
     </div>
 
@@ -443,7 +439,7 @@
       const teams = input.value.trim();
       const selectedSports = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
       const selectedSources = Array.from(sourceCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
-      const tz = timezoneSelect.value;
+      const tz = timezoneSelect.value || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       let manifestUrl = window.location.origin + '/manifest.json';
 
