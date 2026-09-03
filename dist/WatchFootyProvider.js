@@ -56,7 +56,12 @@ class WatchFootyProvider extends BaseProvider {
           // Map dynamic sports directly from the API
           const category = this.normalizeCategory(item.sport);
 
-          const posterUrl = item.poster ? (item.poster.startsWith('http') ? item.poster : `https://api.watchfooty.st${item.poster}`) : null;
+          const posterUrl = item.poster ? (
+            item.poster.startsWith('//') ? `https:${item.poster}` :
+            item.poster.startsWith('http') ? item.poster :
+            item.poster.startsWith('/') ? `https://api.watchfooty.st${item.poster}` :
+            `https://api.watchfooty.st/${item.poster}`
+          ) : null;
 
           matches.push(new MatchEntity({
             id: `wf_${matchId}`,

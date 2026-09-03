@@ -63,6 +63,16 @@ function isMatchLive(match) {
   return false;
 }
 
+function normalizeImageUrl(url, defaultHost = 'https://streamfree.top') {
+  if (!url || typeof url !== 'string') return null;
+  let u = url.trim();
+  if (!u) return null;
+  if (u.startsWith('//')) return `https:${u}`;
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  if (u.startsWith('/')) return `${defaultHost}${u}`;
+  return `${defaultHost}/${u}`;
+}
+
 function mapMatchToMetaPreview(match, config = {}) {
   const isLive = isMatchLive(match);
   const titleStr = match.title || (isLive ? 'Live Match' : 'Upcoming Match');
@@ -111,30 +121,36 @@ function mapMatchToMetaPreview(match, config = {}) {
     imageService.proxyUrl(BASE_URL, sourceUrl, { text: fbText, color: c });
 
   let poster = fallbackPoster;
-  let logo = match.logo || (match.team1 && match.team1.logo ? match.team1.logo : null);
-
   const channelLogo = getChannelLogo(match.title);
-  if (match.poster) {
-    poster = buildImg(match.poster, posterText, color) || fallbackPoster;
+  const team1Logo = match.team1 && match.team1.logo ? normalizeImageUrl(match.team1.logo) : null;
+  const matchPoster = match.poster ? normalizeImageUrl(match.poster) : null;
+  const matchThumb = match.thumbnail_url ? normalizeImageUrl(match.thumbnail_url) : null;
+  const matchLogo = match.logo ? normalizeImageUrl(match.logo) : null;
+
+  let logo = matchLogo || team1Logo || channelLogo || null;
+
+  if (matchPoster) {
+    poster = buildImg(matchPoster, posterText, color) || fallbackPoster;
   } else if (channelLogo) {
     poster = buildImg(channelLogo, match.title, '161616') || fallbackPoster;
     logo = channelLogo;
-  } else if (match.thumbnail_url) {
-    const tUrl = match.thumbnail_url.startsWith('http') ? match.thumbnail_url : `https://streamfree.top${match.thumbnail_url}`;
-    const isLogo = match.category === 'networks' || tUrl.toLowerCase().includes('logo') || tUrl.toLowerCase().includes('icon');
-    
-    poster = buildImg(tUrl, posterText, color) || fallbackPoster;
-    
-    if (isLogo) {
-      logo = tUrl;
+  } else if (matchThumb) {
+    const isLogo = match.category === 'networks' || matchThumb.toLowerCase().includes('logo') || matchThumb.toLowerCase().includes('icon');
+    poster = buildImg(matchThumb, posterText, color) || fallbackPoster;
+    if (isLogo && !logo) {
+      logo = matchThumb;
     }
+  } else if (team1Logo) {
+    poster = buildImg(team1Logo, posterText, color) || fallbackPoster;
+    if (!logo) logo = team1Logo;
   }
 
-  if (logo && !logo.startsWith(BASE_URL)) {
+  if (logo) {
     logo = buildImg(logo, match.title || 'TV', '161616') || logo;
   }
   
-  let background = match.background ? (buildImg(match.background, posterText, color) || poster) : poster;
+  const matchBackground = match.background ? normalizeImageUrl(match.background) : null;
+  let background = matchBackground ? (buildImg(matchBackground, posterText, color) || poster) : poster;
 
   let timeString = match.category === 'networks' ? '24/7 Stream' : 'Live Now';
   let relativeTimeStr = '';

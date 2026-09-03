@@ -80,7 +80,7 @@ class CdnLiveProvider extends BaseProvider {
                 signal: AbortSignal.timeout(10000)
               });
               
-              if (playerRes.ok) {
+              if (playerRes.statusCode >= 200 && playerRes.statusCode < 300) {
                 const html = await playerRes.body.text();
                 const decoderMatch = html.match(/function\s+([a-zA-Z0-9_]+)\s*\([a-zA-Z0-9_]+\)\s*\{.+?atob/);
                 if (decoderMatch) {

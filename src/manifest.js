@@ -35,7 +35,7 @@ const manifest = {
     { type: 'tv', id: 'nuvio_sports_darts', name: '🎯 Darts', extra: [{ name: 'search', isRequired: false }] },
     { type: 'tv', id: 'nuvio_sports_college', name: '🎓 College Sports', extra: [{ name: 'search', isRequired: false }] },
     { type: 'tv', id: 'nuvio_sports_other', name: '🏅 Other Sports', extra: [{ name: 'search', isRequired: false }] },
-    { type: 'tv', id: 'nuvio_sports_networks', name: '📺 24/7 Sports TV', extra: [{ name: 'search', isRequired: false }] },
+
     { type: 'tv', id: 'nuvio_sports_upcoming', name: '⏱️ Upcoming', extra: [{ name: 'search', isRequired: false }] },
     { type: 'tv', id: 'nuvio_sports_teams', name: '⭐ Your Teams', extra: [{ name: 'search', isRequired: false }] }
   ],
@@ -46,15 +46,8 @@ const manifest = {
     { 
       key: 'timezone', 
       title: 'Timezone', 
-      type: 'select',
-      default: 'UTC',
-      options: [
-        'UTC',
-        'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-        'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow',
-        'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Tokyo',
-        'Australia/Sydney', 'Pacific/Auckland'
-      ]
+      type: 'text',
+      default: 'UTC'
     }
   ],
 

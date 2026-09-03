@@ -17,7 +17,9 @@ class CronService {
     this.syncing = true;
     try {
       const activeMatches = await this.matchAggregator.syncMatches();
-      this.pruneStreamCache(activeMatches);
+      if (activeMatches !== null) {
+        this.pruneStreamCache(activeMatches);
+      }
     } finally {
       this.syncing = false;
     }
@@ -50,15 +52,15 @@ class CronService {
       }
     });
 
-    // Prewarm popular live matches every 3 minutes so hot streams are
-    // "already running" when a user clicks (tokens re-minted before expiry).
-    cron.schedule('*/3 * * * *', async () => {
-      try {
-        await this.prewarmPopular();
-      } catch (err) {
-        console.error('[CronService] Prewarm job failed:', err.message);
-      }
-    });
+    // Prewarm popular live matches - disabled for local home/tunnel hosting
+    // to prevent hammering upstream streaming sites and keep network silent.
+    // cron.schedule('*/3 * * * *', async () => {
+    //   try {
+    //     await this.prewarmPopular();
+    //   } catch (err) {
+    //     console.error('[CronService] Prewarm job failed:', err.message);
+    //   }
+    // });
 
     // Run first sync immediately on boot
     const externalUrl = process.env.RENDER_EXTERNAL_URL;

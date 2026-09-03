@@ -51,11 +51,13 @@ class IptvOrgProvider extends BaseProvider {
         const cInfo = channelMap.get(s.channel);
         
         let logoUrl = cInfo.logo || '';
+        if (logoUrl && logoUrl.startsWith('//')) {
+          logoUrl = `https:${logoUrl}`;
+        }
         if (!logoUrl && cInfo.website) {
           try {
             const hostname = new URL(cInfo.website).hostname.replace('www.', '');
-            // Using clearbit for high-res logos, falls back to Google favicons if clearbit fails
-            logoUrl = `https://logo.clearbit.com/${hostname}`;
+            logoUrl = `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
           } catch(e) {}
         }
         

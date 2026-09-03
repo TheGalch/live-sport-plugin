@@ -22,13 +22,22 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const IMAGE_TTL_MS = 10 * 60 * 1000;   // 10 minutes
 const CACHE_MAX_ENTRIES = 120;
 const IMAGE_MAX_BYTES = 1.5 * 1024 * 1024;
-const FETCH_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_MS = 3000;
 
 const cache = new Map();     // url -> { buffer, contentType, expiresAt }
 const inFlight = new Map();  // url -> Promise
 const negatives = new Map(); // url -> expiry ts (recently failed/slow sources)
 
 const NEG_TTL_MS = 60 * 1000;
+
+function normalizeUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  let u = url.trim();
+  if (!u) return null;
+  if (u.startsWith('//')) u = 'https:' + u;
+  if (!/^https?:\/\//i.test(u)) return null;
+  return u;
+}
 
 function escapeXml(s) {
   return String(s)
@@ -74,8 +83,9 @@ function evictIfNeeded() {
  * Fetch a remote image once, validate it, cache it. Returns
  * { buffer, contentType } or null on any failure.
  */
-async function getImage(url) {
-  if (!url || !/^https?:\/\//i.test(url)) return null;
+async function getImage(rawUrl) {
+  const url = normalizeUrl(rawUrl);
+  if (!url) return null;
 
   const now = Date.now();
   const neg = negatives.get(url);
@@ -102,7 +112,7 @@ async function getImage(url) {
         headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8' },
         headersTimeout: FETCH_TIMEOUT_MS,
         bodyTimeout: FETCH_TIMEOUT_MS,
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS + 2000)
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS + 1000)
       });
 
       const contentType = String(res.headers['content-type'] || '').split(';')[0].trim();
@@ -153,8 +163,9 @@ async function getImage(url) {
  * URL never reaches the client as a broken image.
  */
 function proxyUrl(baseUrl, sourceUrl, { text = '', color = '333333' } = {}) {
-  if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) return null;
-  return `${baseUrl}/img?url=${encodeURIComponent(sourceUrl)}&text=${encodeURIComponent(text)}&color=${color}`;
+  const validUrl = normalizeUrl(sourceUrl);
+  if (!validUrl) return null;
+  return `${baseUrl}/img?url=${encodeURIComponent(validUrl)}&text=${encodeURIComponent(text)}&color=${color}`;
 }
 
 function placeholderUrl(baseUrl, text, color) {
@@ -165,5 +176,6 @@ module.exports = {
   svgPlaceholder,
   getImage,
   proxyUrl,
-  placeholderUrl
+  placeholderUrl,
+  normalizeUrl
 };

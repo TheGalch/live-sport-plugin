@@ -2,13 +2,8 @@ const container = require("./src/container.js");
 
 (async () => {
     const agg = container.resolve("matchAggregator");
-    const strims = container.resolve("strims24Provider");
-    const matches = await strims.getMatches();
-    const omonia = matches.find(m => m.title && m.title.includes("Omonia"));
-    console.log("Omonia raw match:", omonia);
+    // Fix: Provider was removed, just testing aggregator sync now
     console.log("Date now:", Date.now());
-    console.log("Match date num:", Number(omonia.date));
-    console.log("Diff in hours:", (Number(omonia.date) - Date.now()) / (3600 * 1000));
     
     // Now let us run aggregator.syncMatches() and see if it ends up in cacheService
     await agg.syncMatches();
