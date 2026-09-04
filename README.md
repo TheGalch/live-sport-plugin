@@ -1,26 +1,96 @@
-# 🔴 Nuvio Live Sports Plugin (Test README)
+# 🔴 Nuvio Live Sports Plugin
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rajhodedara/live-sport-plugin)
 [![Ko-fi](https://img.shields.io/badge/Support_on_Ko--fi-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/rajodedara)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github&logoColor=white)](https://github.com/rajhodedara/live-sport-plugin)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-3.0.0-brightgreen.svg)](#)
 
-> ☕ **Enjoying Nuvio Live Sports?** Consider [supporting the project on Ko-fi](https://ko-fi.com/rajodedara) to help cover server bandwidth, dedicated scrapers, and 24/7 sports streams!
+> ⚠️ **IMPORTANT HOSTING NOTICE:**
+> **Do NOT deploy this addon to free/shared PaaS clouds like Render.com, Vercel, or Railway.** Their automated Acceptable Use Policy (AUP) scanners detect web scrapers and media proxying, which will result in **immediate and permanent suspension of your account**.
+> 
+> **Recommended setup:** Self-host on a spare PC / laptop / Raspberry Pi, or use a cheap unmanaged Linux VPS (e.g., Hetzner, DigitalOcean, Oracle Cloud Free Tier) using Docker or Cloudflare Tunnels (`cloudflared`).
+
+> ☕ **Enjoying Nuvio Live Sports?** Consider [supporting the project on Ko-fi](https://ko-fi.com/rajodedara) to help cover maintenance, dedicated scrapers, and infrastructure!
 
 A production-grade live sports streaming add-on for [Nuvio](https://nuvio.tv) and [Stremio](https://www.stremio.com/). It serves as a powerful multi-source aggregator that provides native live sports streams (Football, Basketball, Motorsport, Cricket, and more) inside your client, utilizing an advanced internal stream resolver to bypass CORS restrictions.
 
 ---
 
+## 🚀 Self-Hosting Guides (Recommended)
+
+### Option 1: Docker / Docker Compose (Easiest for Servers & Raspberry Pi)
+
+Run the addon container in seconds:
+
+```bash
+# Clone the repository
+git clone https://github.com/rajhodedara/live-sport-plugin.git
+cd live-sport-plugin
+
+# Start the container in background
+docker compose up -d
+```
+
+The addon is now available at `http://localhost:7000` (or `http://YOUR_SERVER_IP:7000`).
+
+---
+
+### Option 2: Local Node.js + Cloudflare Tunnel (100% Free HTTPS Domain for Home Hardware)
+
+If running on a home computer, laptop, or Raspberry Pi, you can expose it securely to Nuvio/Stremio over HTTPS without port-forwarding:
+
+1. **Install and run the addon:**
+   ```bash
+   git clone https://github.com/rajhodedara/live-sport-plugin.git
+   cd live-sport-plugin
+   npm install
+   npm run build
+   npm start
+   ```
+
+2. **Expose via Cloudflare Tunnel (`cloudflared`):**
+   - Download [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+   - Run a quick ephemeral tunnel (no account needed):
+     ```bash
+     cloudflared tunnel --url http://127.0.0.1:7000
+     ```
+   - Copy the generated `https://*.trycloudflare.com` URL.
+
+3. **Install in Nuvio / Stremio:**
+   - Go to `https://your-tunnel-url.trycloudflare.com/configure`
+   - Configure your favorite sports and click **Install Addon**!
+
+*(Alternative: You can also use [Ngrok](https://ngrok.com) by running `ngrok http 127.0.0.1:7000`).*
+
+---
+
+### Option 3: Linux VPS with PM2 (Production 24/7)
+
+```bash
+# Clone and build
+git clone https://github.com/rajhodedara/live-sport-plugin.git
+cd live-sport-plugin
+npm install
+npm run build
+
+# Install PM2 and start the service
+npm install -g pm2
+pm2 start dist/index.js --name "nuvio-sports"
+pm2 save
+pm2 startup
+```
+
+---
+
 ## ✨ Key Features
 
-- **🏟️ Multi-Source Aggregator:** Combines matches and streams from multiple sources (StreamFree, Streamed.pk, BinTV, TimStreams, SportyHunter, NTV, iptv-org) into a unified catalog.
-- **⚡ Background Cron Caching:** Uses Stale-While-Revalidate (SWR) caching with an internal background Cron Service to ensure instant loading without hammering provider APIs.
+- **🏟️ Multi-Source Aggregator:** Combines matches and streams from multiple sources (StreamFree, Streamed.pk, BinTV, TimStreams, SportyHunter, WatchFooty, etc.) into a unified catalog.
+- **⚡ Dynamic Host Routing:** Automatically generates manifest and stream URLs based on incoming request headers — works seamlessly behind Cloudflare, Ngrok, or custom domains.
+- **🖼️ Built-in Image Proxy:** Proxies and normalizes thumbnails with SVG fallbacks to guarantee 100% visible posters across Stremio.
 - **🛡️ Opossum Circuit Breakers:** Provider requests are isolated via circuit breakers to instantly fail-over if a streaming site goes down.
 - **🧠 Algorithmic Stream Scoring:** Prioritizes high-resolution direct `.m3u8` links over external web players.
-- **🌐 Built-in Stream Resolver:** Spawns a secondary proxy process (`resolver`) to bypass CORS and referrer restrictions natively.
-- **📡 WebRTC P2P Mesh Network:** Integrates P2P sharing in the fallback Web Player (`/watch`) to handle massive concurrent traffic dynamically.
-- **⚙️ Dynamic Configuration:** Features a beautiful local configuration page to curate your favorite sports and teams.
-- **🏗️ Zero-Code YAML Scrapers:** Add new streaming sources instantly using CSS selectors in YAML.
+- **🌐 Built-in Stream Resolver:** Automatically bypasses CORS and referrer restrictions natively.
+- **⚙️ Dynamic Configuration:** Features a responsive configuration page (`/configure`) to curate your favorite sports, teams, and timezones.
 
 ---
 
@@ -32,168 +102,55 @@ A production-grade live sports streaming add-on for [Nuvio](https://nuvio.tv) an
 - **Dependency Injection:** [Awilix](https://github.com/jeffijoe/awilix)
 - **Resilience:** [Opossum](https://nodeshift.dev/opossum/) (Circuit Breakers)
 - **Addon SDK:** [stremio-addon-sdk](https://github.com/Stremio/stremio-addon-sdk)
-- **Proxying:** http-proxy-middleware
-- **Testing:** Jest
-- **Deployment**: Render.com, Alwaysdata, Docker
+- **Bundler:** [@vercel/ncc](https://github.com/vercel/ncc)
 
 ---
 
 ## 📋 Prerequisites
 
-Before setting up the project locally, make sure you have:
+Before setting up the project locally:
 - **Node.js**: Version 22.0.0 or higher
 - **npm**: Installed with Node.js
 - **Git**: For version control
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Development Workflow
 
-### 1. Clone the Repository
 ```bash
-git clone https://github.com/rajhodedara/live-sport-plugin.git
-cd live-sport-plugin
-```
-
-### 2. Install Dependencies
-```bash
+# Install dependencies
 npm install
-```
 
-### 3. Environment Setup
-Copy the example environment file:
-```bash
-cp .env.example .env
-```
-
-Configure the following variables in `.env`:
-| Variable | Description | Default |
-| --- | --- | --- |
-| `PORT` | Port the addon server will listen on | `7000` |
-| `RESOLVER_PORT` | Port for the internal stream resolver process | `7003` |
-| `BASE_URL` | Base URL of the deployed application | `http://localhost:7000` |
-| `LOW_MEMORY_MODE` | Enable low memory resource constraints if true | `false` |
-
-### 4. Start Development Server
-Run the project in development mode with automatic reload:
-```bash
+# Start development mode
 npm run dev
-```
 
-### 5. Build for Production
-Compiles the application using Vercel NCC:
-```bash
+# Build for production
 npm run build
+
+# Start production server
 npm start
 ```
 
 ---
 
-## 📂 Architecture Overview
-
-### Directory Structure
-```
-├── src/
-│   ├── domain/               # Domain Entities
-│   │   ├── MatchEntity.js    # Representation of a sports match event
-│   │   └── StreamEntity.js   # Representation of a stream link/endpoint
-│   ├── providers/            # Scrapers and APIs providers
-│   │   ├── BaseProvider.js   # Base class for all scraper providers
-│   │   ├── yaml/             # Zero-code YAML-based provider definitions
-│   │   └── *Provider.js      # Individual scraping providers (StreamFree, BinTv, etc.)
-│   ├── services/             # Core business logic container services
-│   │   ├── CacheService.js   # In-memory Stale-While-Revalidate cache
-│   │   ├── CronService.js    # Periodically triggers catalog updates
-│   │   ├── MatchAggregator.js# Merges matches and handles fuzzy deduplication
-│   │   ├── StreamScoringService.js # Scores/ranks available streams
-│   │   └── YamlProviderBuilder.js  # Dynamically compiles YAML scrapers
-│   ├── index.js              # Entry point of the Express server
-│   ├── manifest.js           # Stremio Addon manifest definition
-│   ├── api.js                # Addon routes handlers
-│   └── container.js          # Awilix dependency injection setup
-├── resolver/                 # Standalone reverse-proxy app to bypass HLS CORS
-│   └── src/                  # Resolver source code (uses ES Modules)
-│       └── server.js         # Entry point for the CORS resolver server
-├── public/                   # Static dashboard & configuration page
-├── scripts/                  # Command line automation scripts
-└── test/                     # Unit and integration test suites
-```
-
-### Internal Data Flow & CORS Bypass (The Magic)
-```
-User Match Request ──> Express Server (catalog) ──> Fetch Match details & Embed Link
-                                                              │
-                                                              ▼
-Nuvio Player <── [proxy url] <── Return Proxy Stream URL <── Decrypt & Extract raw .m3u8
-    │
-    ▼ (fetch segment)
-Resolver Proxy (spawns on port 7003) ──[spoof Referer/Origin]──> Provider CDN
-    │                                                                   │
-    └────────────────── Passes HLS chunks back natively ───────────────┘
-```
-
-### ⚙️ How the Addon Works Internally
-
-1. **Catalog Construction & Fuzzy Match Merging**:
-   A background cron service periodically queries all active scraping APIs and website providers (e.g., StreamFree, BinTV, Streamed.pk). It normalizes titles/times and uses fuzzy matching algorithms in [`MatchAggregator`](file:///c:/Users/odeda/Desktop/Projects/Nuvio%20Live%20Sports%20Plugin/src/services/MatchAggregator.js) to deduplicate identical fixtures, keeping them in an in-memory SWR (Stale-While-Revalidate) cache.
-
-2. **Stream Retrieval & Obfuscation Decryption**:
-   When the user opens a match event in Nuvio/Stremio, the app queries the provider pages to locate where the video is embedded. Since providers obscure their streams, the addon runs automated parsing and decryption rules:
-   * **TimStreams XOR Decryption**: In [`TimStreamsProvider.js`](file:///c:/Users/odeda/Desktop/Projects/Nuvio%20Live%20Sports%20Plugin/src/providers/TimStreamsProvider.js), the embed HTML containing a script block in the format `var XXXX=[nums],YYYY=key1,ZZZZ=key2` is parsed. The script is decoded at runtime via `(char_code ^ key1 - key2 + 256) % 256` to construct the true JavaScript string, revealing the hidden `.m3u8` source URL.
-   * **StreamFree Token Extraction**: In [`StreamFreeProvider.js`](file:///c:/Users/odeda/Desktop/Projects/Nuvio%20Live%20Sports%20Plugin/src/providers/StreamFreeProvider.js), security tokens are regex-extracted from Javascript object configurations (`const _0x = {...};`). These tokens (`_t`, `_e`, `_n`) are then appended as query parameters to authorize access to the CDN stream URL.
-
-3. **CORS and Referrer Bypass (The Proxy Resolver)**:
-   CDNs for sport streams usually block external players using `Referer` or `Origin` header validation (returning `403 Forbidden`). To bypass this, the main Express server spawns a local HTTP proxy process ([`resolver`](file:///c:/Users/odeda/Desktop/Projects/Nuvio%20Live%20Sports%20Plugin/resolver/src/server.js)). Instead of returning the raw stream URL directly to the user's player, the app returns a local proxy URL route pointing to this resolver.
-
-4. **Segment Relay**:
-   When the video player requests the stream segments (`.ts` chunks) from the resolver:
-   * The resolver sends requests to the provider CDN using spoofed headers (attaching fake referrer and origin headers corresponding to the provider's host).
-   * It intercepts the incoming payload and pipes the clean video chunks directly to the player in real-time, bypassing any client-side CORS policies.
-
----
-
 ## 🎛️ Configuration Options
 
-Through the local `/configure` UI, you can append a base64/URI-encoded configuration object to the addon URL:
-- **sports:** Comma-separated list of enabled sports categories (e.g., `football,basketball,cricket`). Defaults to `all`.
-- **teams:** Comma-separated list of favorite teams (e.g., `Arsenal,Lakers`). These populate the "⭐ Your Teams" catalog.
-
----
-
-## ⚙️ Available Scripts
-
-The following npm scripts are defined in `package.json`:
-
-| Command | Action |
-| --- | --- |
-| `npm start` | Runs the compiled bundle in production (`node dist/index.js`). |
-| `npm run dev` | Runs the addon server in watch mode with native live reload. |
-| `npm run build` | Compiles the server codebase into a single minified bundle inside `/dist`. |
-| `npm test` | Runs the test suite via Jest. |
-| `npm run generate:provider` | Runs scaffold utility script to generate a boilerplate YAML provider. |
-| `npm run check-sources` | Evaluates the live availability of the external scraper provider APIs. |
+Through the local `/configure` UI, you can customize:
+- **Sports:** Filter specific sports categories (e.g. Football, Basketball, Cricket, Motorsport, MMA, etc.).
+- **Favorite Teams:** Add your favorite clubs/teams for priority tracking under the "⭐ Your Teams" tab.
+- **Timezone:** Display match kick-off times in your exact local timezone.
 
 ---
 
 ## 🧪 Testing
 
-The project uses **Jest** for unit and integration testing.
+The project includes unit, integration, and end-to-end simulation test suites.
 
 ```bash
-# Run all tests
+# Run unit & integration tests
 npm test
 
-# Run tests in watch mode
-npm test -- --watch
+# Run simulated Stremio client E2E test
+node scripts/test-e2e-simulated-client.js
 ```
-
----
-
-## ☁️ Deployment Instructions
-
-### Option 1: Render.com (Recommended for One-Click)
-This project is configured for deployment on Render.com using the `render.yaml` blueprint.
-1. Push your repository to GitHub.
-2. Link your repo to Render and create a new **Web Service**.
-3. Render automatically sets up the environment and launches both the Express server and the child resolver process.
 
