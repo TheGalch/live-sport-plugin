@@ -35,9 +35,7 @@ The addon is now available at `http://localhost:7000` (or `http://YOUR_SERVER_IP
 
 ---
 
-### Option 2: Local Node.js + Cloudflare Tunnel (100% Free HTTPS Domain for Home Hardware)
-
-If running on a home computer, laptop, or Raspberry Pi, you can expose it securely to Nuvio/Stremio over HTTPS without port-forwarding:
+### Option 2: Local Node.js (Same Wi-Fi / Local Network or Cloudflare Tunnel)
 
 1. **Install and run the addon:**
    ```bash
@@ -48,17 +46,24 @@ If running on a home computer, laptop, or Raspberry Pi, you can expose it secure
    npm start
    ```
 
-2. **Expose via Cloudflare Tunnel (`cloudflared`):**
+2. **Access from other Devices on the Same Wi-Fi (Phone, TV, another Laptop):**
+   - Find your host computer's local IPv4 address:
+     - **Windows:** Open Command Prompt (`cmd`) and type `ipconfig` (look for `IPv4 Address`, e.g., `192.168.1.50`).
+     - **Mac / Linux:** Open Terminal and type `ifconfig` or `ip a` (e.g., `192.168.1.50`).
+   - On any phone/tablet/laptop connected to the same Wi-Fi, open your browser:
+     ```
+     http://<YOUR_IPV4_ADDRESS>:7000/configure
+     ```
+     *(Example: `http://192.168.1.50:7000/configure`)*
+   - Configure your settings, copy the link, and paste into Nuvio / Stremio!
+
+3. **(Optional) Expose Outside Home via Cloudflare Tunnel (`cloudflared`):**
    - Download [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
-   - Run a quick ephemeral tunnel (no account needed):
+   - Run a quick tunnel:
      ```bash
      cloudflared tunnel --url http://127.0.0.1:7000
      ```
-   - Copy the generated `https://*.trycloudflare.com` URL.
-
-3. **Install in Nuvio / Stremio:**
-   - Go to `https://your-tunnel-url.trycloudflare.com/configure`
-   - Configure your favorite sports and click **Install Addon**!
+   - Open `https://your-tunnel-url.trycloudflare.com/configure` and install anywhere outside your home network!
 
 *(Alternative: You can also use [Ngrok](https://ngrok.com) by running `ngrok http 127.0.0.1:7000`).*
 
