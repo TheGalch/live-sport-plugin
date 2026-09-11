@@ -6,6 +6,7 @@
   <meta name="description" content="Paste a streamed.pk or embed.st stream URL to resolve the HLS playlist. Play in-browser or copy links for VLC and MPV.">
   <title>Streamed.pk HLS Stream Resolver</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="https://unpkg.com/videoplayer-extension@latest/index.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -45,6 +46,18 @@
         <h2 id="title" class="stream-title">Stream</h2>
         <div class="player">
           <video id="vid" controls playsinline></video>
+          <iframe
+            id="extension-player"
+            title="VideoPlayer extension player"
+            allow="encrypted-media *; autoplay"
+            hidden
+          ></iframe>
+        </div>
+        <div id="extension-controls" class="extension-controls" hidden>
+          <button id="extension-play" type="button">Play with VideoPlayer extension</button>
+          <a id="extension-install" href="https://sharkiller.dev/videoplayer/" target="_blank" rel="noopener" hidden>
+            Install VideoPlayer extension
+          </a>
         </div>
       </div>
 

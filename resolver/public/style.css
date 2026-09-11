@@ -237,6 +237,30 @@ video {
   aspect-ratio: 16 / 9;
 }
 
+#extension-player {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+
+.extension-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.extension-controls a {
+  color: var(--accent);
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+
+.extension-controls a:hover {
+  text-decoration: underline;
+}
+
 .exports {
   list-style: none;
   margin: 0;

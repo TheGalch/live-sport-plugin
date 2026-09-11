@@ -111,7 +111,7 @@ sequenceDiagram
 | Golf source | `src/sources/golf/` | Third-party embed chain → m3u8 |
 | Wire | `src/wire/headers.js`, `src/wire/curl.js` | Shared fetch headers; CDN pull (curl) |
 | Relay | `src/relay/link.js`, `src/relay/m3u8.js`, `src/relay/segment.js` | Relay URLs; M3U8 rewrite; PNG-wrapped TS strip |
-| UI | `public/player.js` | Resolve form, hls.js, VLC/MPV export |
+| UI | `public/player.js` | Resolve form, hls.js, optional Firefox VideoPlayer extension playback, VLC/MPV export |
 
 Handshake and WASM details: [Embed handshake and GOAT decrypt](#embed-handshake-and-goat-decrypt). Relay and playback: [HLS relay](#hls-relay), [Playback](#playback).
 

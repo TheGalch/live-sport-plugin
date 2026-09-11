@@ -5,6 +5,10 @@ const urlIn = $('embed')
 const panel = $('out')
 const heading = $('title')
 const vid = $('vid')
+const extensionPlayer = $('extension-player')
+const extensionControls = $('extension-controls')
+const extensionPlay = $('extension-play')
+const extensionInstall = $('extension-install')
 const err = $('err')
 const btn = form.querySelector('button')
 const rawOut = $('direct')
@@ -18,7 +22,27 @@ const tTotal = $('t-total')
 
 let hls = null
 let timer = null
+let videoPlayerExtension = null
 const hlsReady = import('https://cdn.jsdelivr.net/npm/hls.js@1.5.20/+esm')
+
+async function initializeVideoPlayerExtension() {
+  if (!navigator.userAgent.includes('Firefox')) return
+  if (!globalThis.VideoPlayer) return
+
+  try {
+    videoPlayerExtension = await globalThis.VideoPlayer.init()
+    if (videoPlayerExtension.isInstalled()) {
+      extensionControls.hidden = false
+      extensionPlay.hidden = false
+      return
+    }
+    extensionControls.hidden = false
+    extensionPlay.hidden = true
+    extensionInstall.hidden = false
+  } catch (error) {
+    console.warn('VideoPlayer extension integration unavailable', error)
+  }
+}
 
 function fmtMs(ms) {
   if (ms < 1000) return `${Math.round(ms)}ms`
@@ -103,8 +127,36 @@ function stop() {
   }
 }
 
+function showBrowserPlayer() {
+  extensionPlayer.hidden = true
+  extensionPlayer.removeAttribute('src')
+  vid.hidden = false
+}
+
+function extensionUrl(mediaUrl, title) {
+  if (!videoPlayerExtension?.isInstalled()) {
+    throw new Error('VideoPlayer extension is not installed')
+  }
+
+  const playerUrl = new URL(videoPlayerExtension.getDirectPlayer())
+  const media = new URL(mediaUrl)
+  media.searchParams.set('title', title)
+  playerUrl.hash = media.href
+  return playerUrl.href
+}
+
+function playWithVideoPlayerExtension(mediaUrl, title) {
+  stop()
+  vid.pause()
+  const playerUrl = extensionUrl(mediaUrl, title)
+  extensionPlayer.src = playerUrl
+  vid.hidden = true
+  extensionPlayer.hidden = false
+}
+
 async function play(relay, clock) {
   stop()
+  showBrowserPlayer()
   const { default: Hls } = await hlsReady
   if (!Hls.isSupported()) throw new Error('HLS playback is not supported in this browser. Use VLC or MPV.')
   hls = new Hls()
@@ -127,6 +179,18 @@ async function play(relay, clock) {
   })
 }
 
+extensionPlay.addEventListener('click', () => {
+  err.hidden = true
+  try {
+    playWithVideoPlayerExtension(relayOut.value, heading.textContent)
+  } catch (error) {
+    err.textContent = error.message
+    err.hidden = false
+  }
+})
+
+initializeVideoPlayerExtension()
+
 document.querySelectorAll('[data-copy]').forEach((node) => {
   node.addEventListener('click', async () => {
     const field = $(node.dataset.copy)
@@ -147,6 +211,7 @@ form.addEventListener('submit', async (event) => {
   err.hidden = true
   panel.hidden = true
   stop()
+  showBrowserPlayer()
   const clock = startTimer()
   try {
     const res = await fetch('/api/stream', {
