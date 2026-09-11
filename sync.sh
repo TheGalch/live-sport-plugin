@@ -38,7 +38,7 @@ echo ""
 # ------------------------------------------------------------
 # Go to repository
 # ------------------------------------------------------------
-echo "[1/9] Opening repository..."
+echo "[1/10] Opening repository..."
 echo ""
 
 if [ ! -d "$REPO" ]; then
@@ -58,7 +58,7 @@ echo ""
 # ------------------------------------------------------------
 # Verify Git
 # ------------------------------------------------------------
-echo "[2/9] Checking Git..."
+echo "[2/10] Checking Git..."
 
 if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     echo "ERROR: This directory is not a Git repository."
@@ -72,7 +72,7 @@ echo "Git repository detected."
 # Verify branch
 # ------------------------------------------------------------
 echo ""
-echo "[3/9] Switching to main..."
+echo "[3/10] Switching to main..."
 
 git checkout main
 
@@ -83,7 +83,7 @@ git branch --show-current
 # Verify remotes
 # ------------------------------------------------------------
 echo ""
-echo "[4/9] Checking GitHub remotes..."
+echo "[4/10] Checking GitHub remotes..."
 
 ORIGIN=$(git remote get-url origin)
 UPSTREAM=$(git remote get-url upstream)
@@ -116,7 +116,7 @@ echo "Remotes verified."
 # Check local changes
 # ------------------------------------------------------------
 echo ""
-echo "[5/9] Checking for local changes..."
+echo "[5/10] Checking for local changes..."
 
 if [[ -n "$(git status --porcelain)" ]]; then
 
@@ -155,7 +155,7 @@ fi
 # Save manifest.js
 # ------------------------------------------------------------
 echo ""
-echo "[6/9] Protecting manifest.js..."
+echo "[6/10] Protecting manifest.js..."
 
 MANIFEST="src/manifest.js"
 TEMP_MANIFEST=$(mktemp)
@@ -170,11 +170,49 @@ else
     echo "manifest.js backed up."
 fi
 
+if [ ! -f "$MANIFEST" ]; then
+    echo "WARNING: $MANIFEST does not exist."
+    echo "Continuing without protecting it."
+    PROTECT_MANIFEST=false
+else
+    cp "$MANIFEST" "$TEMP_MANIFEST"
+    PROTECT_MANIFEST=true
+    echo "manifest.js backed up."
+fi
+# ------------------------------------------------------------
+# Save dist/index.js
+# ------------------------------------------------------------
+echo ""
+echo "[7/10] Protecting dist/index.js..."
+
+DIST_INDEX="dist/index.js"
+TEMP_DIST_INDEX=$(mktemp)
+
+if [ ! -f "$DIST_INDEX" ]; then
+    echo "WARNING: $DIST_INDEX does not exist."
+    echo "Continuing without protecting it."
+    PROTECT_DIST_INDEX=false
+else
+    cp "$DIST_INDEX" "$TEMP_DIST_INDEX"
+    PROTECT_DIST_INDEX=true
+    echo "dist/index.js backed up."
+fi
+
+if [ ! -f "$DIST_INDEX" ]; then
+    echo "WARNING: $DIST_INDEX does not exist."
+    echo "Continuing without protecting it."
+    PROTECT_DIST_INDEX=false
+else
+    cp "$DIST_INDEX" "$TEMP_DIST_INDEX"
+    PROTECT_DIST_INDEX=true
+    echo "dist/index.js backed up."
+fi
+
 # ------------------------------------------------------------
 # Fetch upstream
 # ------------------------------------------------------------
 echo ""
-echo "[7/9] Fetching upstream/main..."
+echo "[8/10] Fetching upstream/main..."
 
 git fetch upstream
 
@@ -185,7 +223,7 @@ echo "Upstream fetched successfully."
 # Merge upstream
 # ------------------------------------------------------------
 echo ""
-echo "[8/9] Merging upstream/main..."
+echo "[9/10] Merging upstream/main..."
 
 git merge upstream/main --no-commit --no-ff
 
@@ -204,6 +242,24 @@ if [ "$PROTECT_MANIFEST" = true ]; then
     git add "$MANIFEST"
 
     echo "Local manifest.js restored."
+
+fi
+
+# ------------------------------------------------------------
+# Restore dist/index.js
+# ------------------------------------------------------------
+if [ "$PROTECT_DIST_INDEX" = true ]; then
+
+    echo ""
+    echo "Restoring your local dist/index.js..."
+
+    cp "$TEMP_DIST_INDEX" "$DIST_INDEX"
+
+    rm "$TEMP_DIST_INDEX"
+
+    git add "$DIST_INDEX"
+
+    echo "Local dist/index.js restored."
 
 fi
 
