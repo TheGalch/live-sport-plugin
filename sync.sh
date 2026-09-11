@@ -179,34 +179,34 @@ else
     PROTECT_MANIFEST=true
     echo "manifest.js backed up."
 fi
-# ------------------------------------------------------------
-# Save dist/index.js
-# ------------------------------------------------------------
-echo ""
-echo "[7/10] Protecting dist/index.js..."
+# # ------------------------------------------------------------
+# # Save dist/index.js
+# # ------------------------------------------------------------
+# echo ""
+# echo "[7/10] Protecting dist/index.js..."
 
-DIST_INDEX="dist/index.js"
-TEMP_DIST_INDEX=$(mktemp)
+# DIST_INDEX="dist/index.js"
+# TEMP_DIST_INDEX=$(mktemp)
 
-if [ ! -f "$DIST_INDEX" ]; then
-    echo "WARNING: $DIST_INDEX does not exist."
-    echo "Continuing without protecting it."
-    PROTECT_DIST_INDEX=false
-else
-    cp "$DIST_INDEX" "$TEMP_DIST_INDEX"
-    PROTECT_DIST_INDEX=true
-    echo "dist/index.js backed up."
-fi
+# if [ ! -f "$DIST_INDEX" ]; then
+#     echo "WARNING: $DIST_INDEX does not exist."
+#     echo "Continuing without protecting it."
+#     PROTECT_DIST_INDEX=false
+# else
+#     cp "$DIST_INDEX" "$TEMP_DIST_INDEX"
+#     PROTECT_DIST_INDEX=true
+#     echo "dist/index.js backed up."
+# fi
 
-if [ ! -f "$DIST_INDEX" ]; then
-    echo "WARNING: $DIST_INDEX does not exist."
-    echo "Continuing without protecting it."
-    PROTECT_DIST_INDEX=false
-else
-    cp "$DIST_INDEX" "$TEMP_DIST_INDEX"
-    PROTECT_DIST_INDEX=true
-    echo "dist/index.js backed up."
-fi
+# if [ ! -f "$DIST_INDEX" ]; then
+#     echo "WARNING: $DIST_INDEX does not exist."
+#     echo "Continuing without protecting it."
+#     PROTECT_DIST_INDEX=false
+# else
+#     cp "$DIST_INDEX" "$TEMP_DIST_INDEX"
+#     PROTECT_DIST_INDEX=true
+#     echo "dist/index.js backed up."
+# fi
 
 # ------------------------------------------------------------
 # Fetch upstream
@@ -248,20 +248,20 @@ fi
 # ------------------------------------------------------------
 # Restore dist/index.js
 # ------------------------------------------------------------
-if [ "$PROTECT_DIST_INDEX" = true ]; then
+# if [ "$PROTECT_DIST_INDEX" = true ]; then
 
-    echo ""
-    echo "Restoring your local dist/index.js..."
+#     echo ""
+#     echo "Restoring your local dist/index.js..."
 
-    cp "$TEMP_DIST_INDEX" "$DIST_INDEX"
+#     cp "$TEMP_DIST_INDEX" "$DIST_INDEX"
 
-    rm "$TEMP_DIST_INDEX"
+#     rm "$TEMP_DIST_INDEX"
 
-    git add "$DIST_INDEX"
+#     git add "$DIST_INDEX"
 
-    echo "Local dist/index.js restored."
+#     echo "Local dist/index.js restored."
 
-fi
+# fi
 
 # ------------------------------------------------------------
 # Commit merge
